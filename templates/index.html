@@ -397,7 +397,7 @@
         .empty-state p { font-size: 1rem; font-weight: 500; }
         .hamburger { display: none; cursor: pointer; padding: 8px; color: var(--text-primary); transition: color var(--transition-main); }
         .hamburger:hover { color: var(--accent-primary); }
-        .note-actions { opacity: 0; visibility: hidden; position: absolute; bottom: 8px; right: 8px; display: flex; gap: 3px;}
+        .note-actions { opacity: 0; visibility: hidden; position: absolute; bottom: 8px; left: 8px; display: flex; gap: 3px;}
         .note-card:hover .note-actions { opacity: 1; visibility: visible; }
         .note-actions .btn-icon {
             padding: 5px;
@@ -471,7 +471,8 @@
         }
     </style>
 </head>
-<body class="min-h-screen flex"> <div class="mobile-sidebar-backdrop" id="mobile-sidebar-backdrop"></div>
+<body class="min-h-screen flex">
+    <div class="mobile-sidebar-backdrop" id="mobile-sidebar-backdrop"></div>
     <aside class="sidebar" id="sidebar">
         <div class="flex items-center zazu-title-container pt-2">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-accent-primary mr-1.5">
@@ -643,26 +644,41 @@
             const hljsThemeLight = document.getElementById('hljs-theme-light');
             let currentFilter = 'all';
             let editingNote = null;
+
             document.getElementById('currentYear').textContent = new Date().getFullYear();
+
             marked.setOptions({
                 highlight: function(code, lang) {
                     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
                     return hljs.highlight(code, { language, ignoreIllegals: true }).value;
                 },
-                pedantic: false, gfm: true, breaks: true, sanitize: false,
-                smartLists: true, smartypants: false, xhtml: false
+                pedantic: false,
+                gfm: true,
+                breaks: true,
+                sanitize: true,
+                smartLists: true,
+                smartypants: false,
+                xhtml: false
             });
+
             function autoResizeTextarea(textarea) {
                 if (!textarea) return;
                 textarea.style.height = 'auto';
                 textarea.style.height = (textarea.scrollHeight) + 'px';
             }
+
             [quickNoteInput, fullscreenNoteInput].forEach(textarea => {
                 if (textarea) {
                     textarea.addEventListener('input', () => autoResizeTextarea(textarea));
-                    if(textarea.value) autoResizeTextarea(textarea);
+                    if (textarea.value) autoResizeTextarea(textarea);
+                    textarea.addEventListener('keydown', function(e) {
+                        if (e.ctrlKey && e.key === 'Enter') {
+                            (textarea === quickNoteInput ? saveBtn : fullscreenSaveBtn).click();
+                        }
+                    });
                 }
             });
+
             async function addNewLabel(dropdownContainerId, newLabel) {
                 if (!newLabel) return;
                 try {
@@ -675,12 +691,13 @@
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Failed to add new label');
                     }
-                    window.location.reload();
+                    window.location.reload(); // Could be improved to dynamic update
                 } catch (error) {
                     console.error('Error adding new label:', error);
-                    alert(`Could not add label: ${error.message}`);
+                    console.log(`Could not add label: ${error.message}`);
                 }
             }
+
             function setupCustomDropdown(dropdownContainerId) {
                 const container = document.getElementById(dropdownContainerId);
                 if (!container) return;
@@ -688,10 +705,8 @@
                 const optionsContainer = container.querySelector('.dropdown-options');
                 const hiddenInput = container.querySelector('input[type="hidden"]');
                 const selectedValueDisplay = trigger.querySelector('.selected-value');
-                if (!trigger || !optionsContainer || !hiddenInput || !selectedValueDisplay) {
-                    console.warn('Dropdown elements missing for ID:', dropdownContainerId);
-                    return;
-                }
+                if (!trigger || !optionsContainer || !hiddenInput || !selectedValueDisplay) return;
+
                 trigger.addEventListener('click', (e) => {
                     e.stopPropagation();
                     document.querySelectorAll('.custom-dropdown .dropdown-options.open').forEach(openDropdown => {
@@ -704,6 +719,7 @@
                     optionsContainer.classList.toggle('open');
                     trigger.classList.toggle('open');
                 });
+
                 optionsContainer.querySelectorAll('.option').forEach(option => {
                     option.addEventListener('click', async () => {
                         if (option.classList.contains('add-label')) {
@@ -729,8 +745,10 @@
                     }
                 });
             }
+
             setupCustomDropdown('quick-label-dropdown');
             setupCustomDropdown('fullscreen-label-dropdown');
+
             document.addEventListener('click', (e) => {
                 document.querySelectorAll('.custom-dropdown .dropdown-options.open').forEach(openDropdown => {
                     const customDropdownElement = openDropdown.closest('.custom-dropdown');
@@ -741,82 +759,104 @@
                     }
                 });
             });
+
             if (hamburgerBtn) {
                 hamburgerBtn.addEventListener('click', () => {
-                    if (sidebar) sidebar.classList.toggle('active');
-                    if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.toggle('active');
+                    sidebar.classList.toggle('active');
+                    mobileSidebarBackdrop.classList.toggle('active');
                 });
             }
+
             if (mobileSidebarBackdrop) {
                 mobileSidebarBackdrop.addEventListener('click', () => {
-                    if (sidebar) sidebar.classList.remove('active');
+                    sidebar.classList.remove('active');
                     mobileSidebarBackdrop.classList.remove('active');
                 });
             }
+
             function applyTheme(theme) {
-                const sunIcon = themeToggleFloatingBtn ? themeToggleFloatingBtn.querySelector('.fa-sun') : null;
-                const moonIcon = themeToggleFloatingBtn ? themeToggleFloatingBtn.querySelector('.fa-moon') : null;
+                const sunIcon = themeToggleFloatingBtn.querySelector('.fa-sun');
+                const moonIcon = themeToggleFloatingBtn.querySelector('.fa-moon');
                 if (theme === 'dark') {
                     body.classList.add('dark-theme');
-                    if (sunIcon) sunIcon.style.display = 'none';
-                    if (moonIcon) moonIcon.style.display = 'inline-block';
-                    if (hljsThemeDark) hljsThemeDark.removeAttribute('media');
-                    if (hljsThemeLight) hljsThemeLight.setAttribute('media', 'false');
+                    sunIcon.style.display = 'none';
+                    moonIcon.style.display = 'inline-block';
+                    hljsThemeDark.removeAttribute('media');
+                    hljsThemeLight.setAttribute('media', 'false');
                 } else {
                     body.classList.remove('dark-theme');
-                    if (sunIcon) sunIcon.style.display = 'inline-block';
-                    if (moonIcon) moonIcon.style.display = 'none';
-                    if (hljsThemeLight) hljsThemeLight.removeAttribute('media');
-                    if (hljsThemeDark) hljsThemeDark.setAttribute('media', 'false');
+                    sunIcon.style.display = 'inline-block';
+                    moonIcon.style.display = 'none';
+                    hljsThemeLight.removeAttribute('media');
+                    hljsThemeDark.setAttribute('media', 'false');
                 }
                 localStorage.setItem('theme', theme);
             }
+
             function toggleTheme() {
                 const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
                 applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
             }
-            if (themeToggleFloatingBtn) themeToggleFloatingBtn.addEventListener('click', toggleTheme);
-            if (themeToggleSidebarBtn) themeToggleSidebarBtn.addEventListener('click', toggleTheme);
+
+            themeToggleFloatingBtn.addEventListener('click', toggleTheme);
+            themeToggleSidebarBtn.addEventListener('click', toggleTheme);
+
             const savedTheme = localStorage.getItem('theme');
-            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            applyTheme(savedTheme || (systemPrefersDark ? 'dark' : 'light'));
-            if (saveBtn) saveBtn.addEventListener('click', () => {
+            if (savedTheme) {
+                applyTheme(savedTheme);
+            } else {
+                const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                applyTheme(systemPrefersDark ? 'dark' : 'light');
+            }
+
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', event => {
+                if (!localStorage.getItem('theme')) {
+                    applyTheme(event.matches ? 'dark' : 'light');
+                }
+            });
+
+            saveBtn.addEventListener('click', () => {
                 const labelEl = document.getElementById('quick-label-dropdown');
-                const label = labelEl ? labelEl.querySelector('input[type="hidden"]').value : '';
+                const label = labelEl.querySelector('input[type="hidden"]').value;
                 handleSaveOrUpdateNote(quickNoteInput, label);
             });
-            if (fullscreenSaveBtn) fullscreenSaveBtn.addEventListener('click', () => {
+
+            fullscreenSaveBtn.addEventListener('click', () => {
                 const labelEl = document.getElementById('fullscreen-label-dropdown');
-                const label = labelEl ? labelEl.querySelector('input[type="hidden"]').value : '';
+                const label = labelEl.querySelector('input[type="hidden"]').value;
                 handleSaveOrUpdateNote(fullscreenNoteInput, label, true);
             });
-            if (newNoteBtn) newNoteBtn.addEventListener('click', () => openFullscreenModal());
-            if (expandQuickNoteBtn) expandQuickNoteBtn.addEventListener('click', () => {
+
+            newNoteBtn.addEventListener('click', () => openFullscreenModal());
+            expandQuickNoteBtn.addEventListener('click', () => {
                 const labelEl = document.getElementById('quick-label-dropdown');
-                const label = labelEl ? labelEl.querySelector('input[type="hidden"]').value : null;
-                openFullscreenModal(quickNoteInput ? quickNoteInput.value : '', label);
+                const label = labelEl.querySelector('input[type="hidden"]').value;
+                openFullscreenModal(quickNoteInput.value, label);
             });
-            if (closeFullscreenBtn) closeFullscreenBtn.addEventListener('click', closeFullscreenModal);
-            if (sidebarSearchInput) sidebarSearchInput.addEventListener('input', () => fetchAndRenderNotes(currentFilter, sidebarSearchInput.value.trim()));
+            closeFullscreenBtn.addEventListener('click', closeFullscreenModal);
+
+            sidebarSearchInput.addEventListener('input', () => fetchAndRenderNotes(currentFilter, sidebarSearchInput.value.trim()));
+
             sectionButtons.forEach(button => {
                 button.addEventListener('click', function () {
                     sectionButtons.forEach(btn => btn.classList.remove('active'));
                     this.classList.add('active');
                     currentFilter = this.dataset.filter;
                     const sectionTitle = this.querySelector('span').textContent;
-                    if(currentFilterTitleDesktop) currentFilterTitleDesktop.textContent = sectionTitle;
-                    if(currentFilterTitleMobile) currentFilterTitleMobile.textContent = sectionTitle;
+                    currentFilterTitleDesktop.textContent = sectionTitle;
+                    currentFilterTitleMobile.textContent = sectionTitle;
                     fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
-                    if (sidebar && sidebar.classList.contains('active') && window.innerWidth < 768) {
+                    if (sidebar.classList.contains('active') && window.innerWidth < 768) {
                         sidebar.classList.remove('active');
-                        if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.remove('active');
+                        mobileSidebarBackdrop.classList.remove('active');
                     }
                 });
             });
+
             async function handleSaveOrUpdateNote(inputElement, labelValue, fromFullscreen = false) {
                 if (!inputElement) return;
                 const content = inputElement.value.trim();
-                const label = labelValue;
+                const newLabel = labelValue;
                 if (!content) {
                     console.warn('Note content cannot be empty.');
                     inputElement.focus();
@@ -824,8 +864,9 @@
                 }
                 const noteData = {
                     content: content,
-                    label: label,
-                    filename: editingNote ? editingNote.filename : null
+                    label: newLabel,
+                    filename: editingNote ? editingNote.filename : null,
+                    original_label: editingNote ? editingNote.label : null
                 };
                 try {
                     const endpoint = editingNote ? '/update' : '/save';
@@ -841,85 +882,59 @@
                     fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
                     inputElement.value = '';
                     autoResizeTextarea(inputElement);
-                    if (fromFullscreen) {
-                        closeFullscreenModal();
-                    } else {
-                        const quickDropdown = document.getElementById('quick-label-dropdown');
-                        if (quickDropdown) {
-                            const qHiddenInput = quickDropdown.querySelector('input[type="hidden"]');
-                            const qSelectedDisplay = quickDropdown.querySelector('.selected-value');
-                            const qOptions = quickDropdown.querySelectorAll('.dropdown-options .option:not(.add-label)');
-                            if(qOptions.length > 0 && qHiddenInput && qSelectedDisplay) {
-                                const firstVal = qOptions[0].dataset.value;
-                                const firstText = qOptions[0].textContent.trim();
-                                qHiddenInput.value = firstVal;
-                                qSelectedDisplay.textContent = firstText;
-                                qOptions.forEach(opt => opt.classList.remove('selected'));
-                                qOptions[0].classList.add('selected');
-                            }
-                        }
-                    }
+                    if (fromFullscreen) closeFullscreenModal();
                     editingNote = null;
                 } catch (error) {
                     console.error(`Error ${editingNote ? 'updating' : 'saving'} note:`, error);
-                    alert(`Could not ${editingNote ? 'update' : 'save'} note: ${error.message}`);
+                    console.log(`Could not ${editingNote ? 'update' : 'save'} note: ${error.message}`);
                 }
             }
+
             function openFullscreenModal(content = '', label = null, noteToEdit = null) {
                 editingNote = noteToEdit;
-                if (fullscreenNoteInput) {
-                    fullscreenNoteInput.value = content || (editingNote ? editingNote.content : '');
-                    autoResizeTextarea(fullscreenNoteInput);
-                }
+                fullscreenNoteInput.value = content || (editingNote ? editingNote.content : '');
+                autoResizeTextarea(fullscreenNoteInput);
                 const fsDropdown = document.getElementById('fullscreen-label-dropdown');
                 if (fsDropdown) {
                     const fsHiddenInput = fsDropdown.querySelector('input[type="hidden"]');
                     const fsSelectedDisplay = fsDropdown.querySelector('.selected-value');
                     const fsOptions = fsDropdown.querySelectorAll('.dropdown-options .option:not(.add-label)');
-                    if (fsHiddenInput && fsSelectedDisplay && fsOptions) {
-                        let targetLabelValue = '';
-                        let targetLabelText = 'Select Label';
-                        if (noteToEdit && noteToEdit.label) { targetLabelValue = noteToEdit.label; }
-                        else if (label) { targetLabelValue = label; }
-                        else if (fsOptions.length > 0) { targetLabelValue = fsOptions[0].dataset.value; }
+                    if (fsHiddenInput && fsSelectedDisplay && fsOptions.length) {
+                        let targetLabelValue = noteToEdit?.label || label || fsOptions[0].dataset.value;
                         fsHiddenInput.value = targetLabelValue;
                         let labelFound = false;
                         fsOptions.forEach(opt => {
                             opt.classList.remove('selected');
                             if (opt.dataset.value === targetLabelValue) {
                                 opt.classList.add('selected');
-                                targetLabelText = opt.textContent.trim();
+                                fsSelectedDisplay.textContent = opt.textContent.trim();
                                 labelFound = true;
                             }
                         });
-                        if (!labelFound && fsOptions.length > 0) {
-                            targetLabelText = fsOptions[0].textContent.trim();
+                        if (!labelFound) {
                             fsHiddenInput.value = fsOptions[0].dataset.value;
+                            fsSelectedDisplay.textContent = fsOptions[0].textContent.trim();
                             fsOptions[0].classList.add('selected');
-                        } else if (fsOptions.length === 0) {
-                            targetLabelText = 'No Labels';
                         }
-                        fsSelectedDisplay.textContent = targetLabelText;
                     }
                 }
-                if (fullscreenModal) fullscreenModal.classList.add('active');
-                setTimeout(() => { if (fullscreenNoteInput) fullscreenNoteInput.focus(); }, 50);
-                if (modalTitleEl) modalTitleEl.textContent = editingNote ? 'Edit Note' : 'Create Note';
-                if (fullscreenSaveBtnText) fullscreenSaveBtnText.textContent = editingNote ? 'Update Note' : 'Save Note';
+                fullscreenModal.classList.add('active');
+                setTimeout(() => fullscreenNoteInput.focus(), 50);
+                modalTitleEl.textContent = editingNote ? 'Edit Note' : 'Create Note';
+                fullscreenSaveBtnText.textContent = editingNote ? 'Update Note' : 'Save Note';
             }
+
             function closeFullscreenModal() {
-                if (fullscreenModal) fullscreenModal.classList.remove('active');
+                fullscreenModal.classList.remove('active');
                 editingNote = null;
             }
+
             async function fetchAndRenderNotes(filter = 'all', searchTerm = '') {
                 try {
                     const queryParams = new URLSearchParams();
                     if (filter !== 'all') queryParams.append('label', filter);
                     if (searchTerm) queryParams.append('search', searchTerm);
-                    const response = await fetch(`/notes?${queryParams.toString()}`, {
-                        method: 'GET',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
+                    const response = await fetch(`/notes?${queryParams.toString()}`, { headers: { 'Content-Type': 'application/json' } });
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Failed to fetch notes');
@@ -928,45 +943,34 @@
                     renderNotes(notes);
                 } catch (error) {
                     console.error('Error fetching notes:', error);
-                    if (notesContainer) notesContainer.innerHTML = '';
-                    if (emptyNotesPlaceholder) {
-                        emptyNotesPlaceholder.classList.remove('hidden');
-                        const p1 = emptyNotesPlaceholder.querySelector('p:first-of-type');
-                        const p2 = emptyNotesPlaceholder.querySelector('p:last-of-type');
-                        if (p1) p1.textContent = "Could not load notes.";
-                        if (p2) p2.textContent = "Please check your connection or try again later.";
-                    }
+                    notesContainer.innerHTML = '';
+                    emptyNotesPlaceholder.classList.remove('hidden');
+                    emptyNotesPlaceholder.querySelector('p:first-of-type').textContent = "Could not load notes.";
+                    emptyNotesPlaceholder.querySelector('p:last-of-type').textContent = "Please check your connection or try again later.";
                 }
             }
+
             function renderNotes(notes) {
-                if (!notesContainer) return;
                 notesContainer.innerHTML = '';
-                if (!Array.isArray(notes) || notes.length === 0) {
-                    if (emptyNotesPlaceholder) {
-                        emptyNotesPlaceholder.classList.remove('hidden');
-                        const p1 = emptyNotesPlaceholder.querySelector('p:first-of-type');
-                        const p2 = emptyNotesPlaceholder.querySelector('p:last-of-type');
-                        const currentSearch = sidebarSearchInput ? sidebarSearchInput.value.trim() : '';
-                        if (p1) p1.textContent = currentSearch || currentFilter !== 'all' ? "No notes match your criteria." : "No notes yet.";
-                        if (p2) p2.textContent = currentSearch || currentFilter !== 'all' ? "Try a different search or filter." : "Create your first note!";
-                    }
+                if (!Array.isArray(notes) || !notes.length) {
+                    emptyNotesPlaceholder.classList.remove('hidden');
+                    const p1 = emptyNotesPlaceholder.querySelector('p:first-of-type');
+                    const p2 = emptyNotesPlaceholder.querySelector('p:last-of-type');
+                    const currentSearch = sidebarSearchInput ? sidebarSearchInput.value.trim() : '';
+                    p1.textContent = currentSearch || currentFilter !== 'all' ? "No notes match your criteria." : "No notes yet.";
+                    p2.textContent = currentSearch || currentFilter !== 'all' ? "Try a different search or filter." : "Create your first note!";
                     return;
                 }
-                if (emptyNotesPlaceholder) emptyNotesPlaceholder.classList.add('hidden');
+                emptyNotesPlaceholder.classList.add('hidden');
                 let lastRenderedDate = null;
                 notes.forEach((note, index) => {
-                    if (!note || !note.timestamp || !note.content) {
+                    if (!note.timestamp || !note.content) {
                         console.warn(`Invalid note at index ${index}:`, note);
                         return;
                     }
                     const noteDateTime = new Date(note.timestamp);
-                    if (isNaN(noteDateTime.getTime())) {
-                        console.warn(`Invalid timestamp for note at index ${index}:`, note.timestamp);
-                        return;
-                    }
-                    const noteDate = noteDateTime.toLocaleDateString(undefined, {
-                        year: 'numeric', month: 'long', day: 'numeric'
-                    });
+                    if (isNaN(noteDateTime.getTime())) return;
+                    const noteDate = noteDateTime.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
                     if (noteDate !== lastRenderedDate) {
                         const dateHeaderEl = document.createElement('h2');
                         dateHeaderEl.className = 'date-header';
@@ -974,17 +978,17 @@
                         notesContainer.appendChild(dateHeaderEl);
                         lastRenderedDate = noteDate;
                     }
-                    const noteEl = createNoteElement(note, noteDateTime);
-                    notesContainer.appendChild(noteEl);
+                    notesContainer.appendChild(createNoteElement(note, noteDateTime));
                 });
             }
+
             function createNoteElement(note, noteDateTime) {
                 const noteEl = document.createElement('article');
                 const labelClass = `label-${note.label ? note.label.toLowerCase().replace(/[^a-z0-9]/gi, '-') : 'general'}`;
                 noteEl.className = `note-card relative ${labelClass}`;
                 noteEl.dataset.filename = note.filename;
-                const MAX_CONTENT_PREVIEW_CHARS = 100;
                 let displayContentPreview = note.content.split('\n').join(' ').trim();
+                const MAX_CONTENT_PREVIEW_CHARS = 100;
                 if (displayContentPreview.length > MAX_CONTENT_PREVIEW_CHARS) {
                     displayContentPreview = displayContentPreview.substring(0, MAX_CONTENT_PREVIEW_CHARS) + '...';
                 }
@@ -1013,25 +1017,23 @@
                     showMoreBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         const isHidden = contentFullEl.classList.contains('hidden');
-                        if (contentPreviewEl) contentPreviewEl.classList.toggle('hidden', isHidden);
-                        if (contentFullEl) contentFullEl.classList.toggle('hidden', !isHidden);
+                        contentPreviewEl.classList.toggle('hidden', isHidden);
+                        contentFullEl.classList.toggle('hidden', !isHidden);
                         showMoreBtn.textContent = isHidden ? 'Show less' : 'Show more';
                     });
                 }
-                const editBtn = noteEl.querySelector('.edit-btn');
-                if (editBtn) editBtn.addEventListener('click', (e) => {
+                noteEl.querySelector('.edit-btn').addEventListener('click', (e) => {
                     e.stopPropagation();
                     openFullscreenModal(note.content, note.label, note);
                 });
-                const deleteBtn = noteEl.querySelector('.delete-btn');
-                if (deleteBtn) deleteBtn.addEventListener('click', async (e) => {
+                noteEl.querySelector('.delete-btn').addEventListener('click', async (e) => {
                     e.stopPropagation();
                     if (confirm('Are you sure you want to delete this note?')) {
                         try {
                             const response = await fetch('/delete', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ filename: note.filename })
+                                body: JSON.stringify({ filename: note.filename, label: note.label })
                             });
                             if (!response.ok) {
                                 const errorData = await response.json();
@@ -1040,12 +1042,13 @@
                             fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
                         } catch (error) {
                             console.error('Error deleting note:', error);
-                            alert(`Could not delete note: ${error.message}`);
+                            console.log(`Could not delete note: ${error.message}`);
                         }
                     }
                 });
                 return noteEl;
             }
+
             fetchAndRenderNotes();
         });
     </script>
