@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zazu | Compact Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" id="hljs-theme-dark" media="false">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-light.min.css" id="hljs-theme-light" media="false">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        :root {
+            --bg-main: #f0f2f5;
+            --bg-sidebar: #f8f9fa;
+            --bg-header: #ffffff;
+            --bg-card: #ffffff;
+            --bg-input: #ffffff;
+            --bg-input-focus: #ffffff;
+            --bg-hover: #e9ecef;
+            --bg-modal: #ffffff;
+            --bg-quick-note-area: #ffffff;
+            --text-primary: #1d1d1f;
+            --text-secondary: #555555;
+            --text-tertiary: #888888;
+            --text-on-accent: #ffffff;
+            --text-placeholder: #aaaaaa;
+            --text-label-pill: #4a4a4a;
+            --bg-label-pill: #e0e0e0;
+            --accent-primary: #007AFF;
+            --accent-primary-hover: #005bb5;
+            --accent-secondary: #FF6B2C;
+            --border-color: #dce1e6;
+            --border-color-light: #e9ecef;
+            --border-color-input: #ced4da;
+            --border-color-input-focus: #007AFF;
+            --font-primary: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            --font-code: 'SF Mono', 'Consolas', 'Liberation Mono', Menlo, Courier, monospace;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 10px;
+            --shadow-soft: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-medium: 0 3px 6px rgba(0,0,0,0.07);
+            --shadow-focus-ring: 0 0 0 3px rgba(0, 122, 255, 0.25);
+            --transition-main: all 0.2s ease-in-out;
+        }
+        .dark-theme {
+            --bg-main: #1a1d1f;
+            --bg-sidebar: #23272a;
+            --bg-header: #2c3034;
+            --bg-card: #2c3034;
+            --bg-input: #35393e;
+            --bg-input-focus: #3f444a;
+            --bg-hover: #3f444a;
+            --bg-modal: #2c3034;
+            --bg-quick-note-area: #23272a;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --text-tertiary: #888888;
+            --text-on-accent: #ffffff;
+            --text-placeholder: #777777;
+            --text-label-pill: #e0e0e0;
+            --bg-label-pill: #4a4f54;
+            --border-color: #35393e;
+            --border-color-light: #3f444a;
+            --border-color-input: #4a4f54;
+            --border-color-input-focus: #007AFF;
+            --shadow-soft: 0 1px 2px rgba(0,0,0,0.15);
+            --shadow-medium: 0 3px 6px rgba(0,0,0,0.2);
+        }
+        body {
+            margin: 0;
+            background-color: var(--bg-main);
+            font-family: var(--font-primary);
+            color: var(--text-primary);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            overflow-x: hidden;
+            font-weight: 400;
+            transition: var(--transition-main);
+        }
+        .sidebar {
+            width: 240px;
+            position: fixed; top: 0; bottom: 0; left:0;
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            padding: 12px;
+            overflow-y: auto;
+            transition: transform var(--transition-main), background-color var(--transition-main), border-color var(--transition-main);
+            z-index: 100;
+        }
+        .main-content {
+            margin-left: 240px;
+            padding-bottom: 2rem;
+            transition: margin-left var(--transition-main), background-color var(--transition-main);
+        }
+        .main-content-header {
+            background-color: var(--bg-header);
+            position: sticky; top: 0; z-index: 50;
+            border-bottom: 1px solid var(--border-color);
+            height: 50px;
+            padding: 0 12px;
+            transition: background-color var(--transition-main), border-color var(--transition-main);
+        }
+        .main-content-header > .max-w-6xl {
+            height: 100%; display: flex; align-items: center; position: relative;
+        }
+        .header-left-items { position: absolute; left: 0; top: 50%; transform: translateY(-50%); }
+        .header-center-title { flex-grow: 1; text-align: center; }
+        .header-center-title h1 {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin: 0;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            padding: 0 30px;
+            transition: color var(--transition-main);
+        }
+        @media (min-width: 640px) { .header-center-title h1 { padding: 0; font-size: 17px; } }
+        .header-right-items { position: absolute; right: 0; top: 50%; transform: translateY(-50%); display: flex; align-items: center; }
+        .sidebar .zazu-title-container { margin-bottom: 10px; }
+        .sidebar .zazu-title-container h1 {
+            font-size: 18px; font-weight: 600; color: var(--text-primary); margin:0;
+            transition: color var(--transition-main);
+        }
+        .sidebar .section-group-title h2 {
+            font-weight: 500; font-size: 11px;
+            color: var(--text-secondary); text-transform: uppercase;
+            margin-bottom: 3px; letter-spacing: 0.03em;
+            transition: color var(--transition-main);
+        }
+        .search-input-wrapper { margin-bottom: 10px; }
+        #sidebar-search-input {
+            padding: 7px 10px 7px 2.2rem;
+            font-size: 13px;
+            border: 1px solid var(--border-color-input);
+            background-color: var(--bg-input);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary); width: 100%;
+            transition: border-color var(--transition-main), box-shadow var(--transition-main), background-color var(--transition-main), color var(--transition-main);
+        }
+        #sidebar-search-input:focus {
+            border-color: var(--border-color-input-focus);
+            box-shadow: var(--shadow-focus-ring);
+            background-color: var(--bg-input-focus);
+        }
+        #sidebar-search-input::placeholder { color: var(--text-placeholder); font-weight: 400; font-size: 13px; transition: color var(--transition-main); }
+        .search-icon-container {
+            position: absolute; left: 0.7rem; top: 50%;
+            transform: translateY(-50%); color: var(--text-tertiary); font-size: 13px;
+            transition: color var(--transition-main);
+        }
+        .section-button {
+            padding: 7px 10px;
+            border-radius: var(--radius-sm);
+            font-weight: 400;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 2px 0;
+            transition: background-color var(--transition-main), color var(--transition-main), transform 0.1s ease;
+        }
+        .section-button:hover {
+            background-color: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .section-button.active {
+            background: var(--accent-primary);
+            color: var(--text-on-accent);
+            font-weight: 500;
+        }
+        .section-button.active:hover { background-color: var(--accent-primary-hover); }
+        .date-header {
+            padding: 0.3rem 0;
+            margin: 1.5rem 0 0.8rem 0;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: capitalize;
+            transition: color var(--transition-main);
+        }
+        .note-card {
+            background-color: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            box-shadow: var(--shadow-soft);
+            transition: var(--transition-main), transform 0.15s ease, background-color var(--transition-main), box-shadow var(--transition-main);
+            width: 100%; cursor: pointer;
+            margin-bottom: 0.6rem;
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
+        .note-card:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-medium);
+            border-color: var(--border-color-light);
+        }
+        .note-card .note-metadata {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: var(--text-tertiary);
+            min-height: 1.5em;
+            transition: color var(--transition-main);
+        }
+        .note-card .note-label-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-right: 8px;
+        }
+        .note-card .note-label-display {
+            font-weight: 500;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            background-color: var(--bg-label-pill);
+            color: var(--text-label-pill);
+            text-transform: capitalize;
+            display: inline-block;
+            transition: background-color var(--transition-main), color var(--transition-main);
+        }
+        .note-card .note-time {
+            font-size: 10px;
+            color: var(--text-tertiary);
+            line-height: 1;
+            white-space: nowrap;
+            transition: color var(--transition-main);
+        }
+        .prose { color: var(--text-primary); font-size: 13px; line-height: 1.5; font-weight: 400; transition: color var(--transition-main); }
+        .prose p { margin-bottom: 0.4em; }
+        .prose > *:first-child { margin-top: 0; }
+        .prose > *:last-child { margin-bottom: 0; }
+        .prose code { background: var(--bg-hover); color: var(--accent-primary); padding: 0.15em 0.3em; border-radius: var(--radius-sm); font-size: 0.8em; font-family: var(--font-code); transition: background-color var(--transition-main), color var(--transition-main); }
+        .dark-theme .prose code { background: rgba(255,255,255,0.1); }
+        .prose pre { background: #282c34; color: #abb2bf; padding: 0.8em; border-radius: var(--radius-sm); overflow-x: auto; margin: 1em 0; box-shadow: var(--shadow-soft); font-family: var(--font-code); font-size: 0.85rem;}
+        .dark-theme .prose pre { background: #212529; color: #c9d1d9; }
+        .prose pre code { background: transparent; color: inherit; font-size: 1em; padding: 0; }
+        .prose a { color: var(--accent-primary); text-decoration: none; font-weight: 500; }
+        .prose a:hover { text-decoration: underline; color: var(--accent-primary-hover); }
+        .prose blockquote { border-left: 2px solid var(--accent-primary); padding-left: 0.8em; font-style: italic; color: var(--text-secondary); margin: 1em 0; background-color: transparent; border-radius: 0; transition: border-color var(--transition-main), color var(--transition-main);}
+        .dark-theme .prose blockquote { background-color: rgba(255,255,255,0.03); }
+        #quick-note-input-area {
+            background-color: var(--bg-quick-note-area);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            margin-bottom: 10px;
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-color);
+            transition: background-color var(--transition-main), border-color var(--transition-main), box-shadow var(--transition-main);
+        }
+        textarea.auto-resize {
+            font-family: var(--font-primary);
+            font-size: 13px;
+            font-weight: 400;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color-input);
+            border-radius: var(--radius-sm);
+            width: 100%;
+            color: var(--text-primary);
+            overflow-y: hidden;
+            resize: none;
+            min-height: 38px;
+            line-height: 1.5;
+            padding: 7px 10px;
+            transition: border-color var(--transition-main), box-shadow var(--transition-main), background-color var(--transition-main), color var(--transition-main);
+        }
+        textarea.auto-resize:focus {
+            border-color: var(--border-color-input-focus);
+            box-shadow: var(--shadow-focus-ring);
+            background-color: var(--bg-input-focus);
+        }
+        textarea.auto-resize::placeholder { color: var(--text-placeholder); opacity: 1; font-weight: 400; font-size: 13px; transition: color var(--transition-main); }
+        .labels-below-input {
+            margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px;
+        }
+        .label-pill-button {
+            font-size: 11px; padding: 3px 8px; border-radius: 12px;
+            background-color: var(--bg-label-pill); color: var(--text-label-pill);
+            border: 1px solid transparent; cursor: pointer; transition: var(--transition-main);
+        }
+        .label-pill-button:hover {
+            background-color: var(--bg-hover); border-color: var(--text-tertiary);
+        }
+        .label-pill-button.active {
+            background-color: var(--accent-primary); color: var(--text-on-accent);
+            border-color: var(--accent-primary);
+        }
+        .custom-dropdown { position: relative; display: inline-block; font-size: 13px; }
+        .dropdown-trigger {
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color-input);
+            border-radius: var(--radius-sm);
+            padding: 7px 10px;
+            min-width: 120px;
+            font-weight: 400;
+            transition: var(--transition-main);
+        }
+        .dropdown-trigger:hover, .dropdown-trigger.open {
+            background-color: var(--bg-hover);
+            border-color: var(--border-color-input-focus);
+        }
+        .dropdown-trigger .selected-value { margin-right: 0.4rem; }
+        .dropdown-trigger .arrow { transition: transform 0.2s ease; font-size: 0.6rem; }
+        .dropdown-options {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-medium);
+            padding: 0.4rem; z-index: 110;
+            display: none; position: absolute; top: calc(100% + 6px); left: 0;
+            min-width: 100%; max-height: 200px; overflow-y: auto;
+            transition: background-color var(--transition-main), border-color var(--transition-main);
+        }
+        .dropdown-options.open { display: block; }
+        .dropdown-options .option {
+            padding: 7px 10px; border-radius: var(--radius-sm);
+            color: var(--text-primary); font-weight: 400;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease;
+        }
+        .dropdown-options .option:hover { background-color: var(--bg-hover); }
+        .dropdown-options .option.selected { background-color: var(--accent-primary); color: var(--text-on-accent); font-weight: 500; }
+        .dropdown-options .option.add-label { color: var(--accent-secondary); font-weight: 500; }
+        .dropdown-options .option.add-label:hover { background-color: var(--bg-hover); color: var(--accent-primary); }
+        .btn {
+            font-family: var(--font-primary);
+            transition: var(--transition-main), transform 0.1s ease !important;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            padding: 7px 14px;
+            font-size: 13px;
+            cursor: pointer; border: 1px solid transparent;
+            display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+        }
+        .btn:hover { transform: scale(1.02); }
+        .btn-primary { background: var(--accent-primary); color: var(--text-on-accent); box-shadow: 0 1px 2px rgba(0,122,255,0.15);}
+        .btn-primary:hover { background: var(--accent-primary-hover); box-shadow: 0 2px 4px rgba(0,122,255,0.2); }
+        .btn-secondary { background-color: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color-input); box-shadow: none;}
+        .btn-secondary:hover { background-color: var(--bg-hover); border-color: var(--text-secondary); }
+        .btn-icon {
+            padding: 7px;
+            min-width: auto; min-height: auto;
+            width: 30px; height: 30px;
+            color: var(--text-secondary); background-color: transparent; border: 1px solid transparent;
+        }
+        .btn-icon i { font-size: 13px; }
+        .btn-icon:hover { background-color: var(--bg-hover); color: var(--accent-primary); }
+        .btn-icon.btn-primary { background: var(--accent-primary); color: var(--text-on-accent); }
+        .btn-icon.btn-primary:hover { background: var(--accent-primary-hover); }
+        .modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(30, 30, 40, 0.3); backdrop-filter: blur(5px) saturate(120%);
+            z-index: 200; justify-content: center; align-items: center; opacity: 0;
+            transition: background-color var(--transition-main), opacity 0.3s ease;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .dark-theme .modal-overlay { background: rgba(0,0,0,0.5); }
+        .modal-content {
+            background-color: var(--bg-modal);
+            border-radius: var(--radius-lg);
+            padding: 14px;
+            width: 90%; max-width: 500px;
+            height: auto; max-height: 85vh;
+            box-shadow: var(--shadow-medium);
+            border: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            transform: translateY(20px) scale(0.97);
+            transition: background-color var(--transition-main), border-color var(--transition-main), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0) scale(1); }
+        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); transition: border-color var(--transition-main); }
+        .editor-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: color var(--transition-main);
+        }
+        #fullscreen-note-input {
+            flex-grow: 1;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color-input);
+            border-radius: var(--radius-sm);
+            min-height: 120px;
+            padding: 10px;
+            font-size: 13px;
+            color: var(--text-primary);
+            transition: background-color var(--transition-main), border-color var(--transition-main), color var(--transition-main);
+        }
+        #fullscreen-note-input:focus { border-color: var(--border-color-input-focus); box-shadow: var(--shadow-focus-ring); background-color: var(--bg-input-focus); }
+        .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem 1.5rem; text-align: center; color: var(--text-secondary); border-radius: var(--radius-lg); background-color: transparent; transition: color var(--transition-main); }
+        .empty-state i { font-size: 2.5rem; margin-bottom: 0.75rem; color: var(--text-tertiary); transition: color var(--transition-main); }
+        .empty-state p { font-size: 1rem; font-weight: 500; }
+        .hamburger { display: none; cursor: pointer; padding: 8px; color: var(--text-primary); transition: color var(--transition-main); }
+        .hamburger:hover { color: var(--accent-primary); }
+        .note-actions { opacity: 0; visibility: hidden; position: absolute; bottom: 8px; right: 8px; display: flex; gap: 3px;}
+        .note-card:hover .note-actions { opacity: 1; visibility: visible; }
+        .note-actions .btn-icon {
+            padding: 5px;
+            font-size: 11px;
+            background-color: var(--bg-card);
+            color: var(--text-tertiary);
+            border-radius: var(--radius-sm);
+            height: 24px; width: 24px;
+            border: 1px solid var(--border-color-light);
+        }
+        .note-actions .btn-icon:hover {
+            background-color: var(--bg-hover);
+            color: var(--accent-primary);
+            transform: scale(1.05);
+        }
+        .note-actions .btn-icon i { font-size: 11px; }
+        .mobile-sidebar-backdrop { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0, 0.2); z-index: 90; transition: background-color var(--transition-main); }
+        .mobile-sidebar-backdrop.active { display: block; }
+        .dark-theme .mobile-sidebar-backdrop { background: rgba(0,0,0, 0.4); }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--text-tertiary); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+        .dark-theme ::-webkit-scrollbar-thumb { background: #555; }
+        .dark-theme ::-webkit-scrollbar-thumb:hover { background: #777; }
+        .quick-note-controls { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 8px;}
+        .quick-note-actions-right { display: flex; align-items: center; gap: 8px; }
+        footer p { color: var(--text-secondary); font-size: 11px; transition: color var(--transition-main); }
+        #theme-toggle-floating-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 8px;
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-medium);
+            cursor: pointer;
+            z-index: 1000;
+            font-size: 16px;
+            transition: var(--transition-main), transform 0.1s ease;
+        }
+        #theme-toggle-floating-btn:hover {
+            background-color: var(--bg-hover);
+            transform: scale(1.1);
+        }
+        #theme-toggle-floating-btn .fa-moon { display: none; }
+        .dark-theme #theme-toggle-floating-btn .fa-sun { display: none; }
+        .dark-theme #theme-toggle-floating-btn .fa-moon { display: inline-block; }
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(-100%); box-shadow: 0 0 20px rgba(0,0,0,0.08); border-right: none; }
+            .sidebar.active { transform: translateX(0); }
+            .dark-theme .sidebar { box-shadow: 0 0 20px rgba(0,0,0,0.2); }
+            .main-content { margin-left: 0; }
+            .main-content-header { padding: 0 0.8rem; }
+            .header-left-items { left: 0.3rem; }
+            .header-right-items { right: 0.3rem; }
+            .hamburger { display: flex; }
+            .note-actions { opacity:1; visibility: visible; }
+            .note-card { padding: 10px; }
+            #fullscreen-note-input { font-size: 13px; min-height: 100px;}
+            .date-header { font-size: 13px; margin-top: 1.2rem;}
+            .quick-note-controls { flex-direction: column; align-items: flex-start;}
+            .quick-note-actions-right { width: 100%; justify-content: flex-end;}
+        }
+    </style>
+</head>
+<body class="min-h-screen flex"> <div class="mobile-sidebar-backdrop" id="mobile-sidebar-backdrop"></div>
+    <aside class="sidebar" id="sidebar">
+        <div class="flex items-center zazu-title-container pt-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-accent-primary mr-1.5">
+                <path d="M11.25 3.75H6V2.25H4.5V3.75H3V5.25H4.5V12.345C4.02127 12.8074 3.63558 13.3618 3.36932 13.973C3.06701 14.6596 2.92486 15.4018 2.95454 16.1468C3.01261 17.6117 3.68213 18.9886 4.79999 20.0059V21.75H6.25V20.0059C7.31786 18.9886 7.98739 17.6117 8.04546 16.1468C8.07514 15.4018 7.93299 14.6596 7.63068 13.973C7.36442 13.3618 6.97872 12.8074 6.49999 12.345V5.25H11.25V3.75ZM6 6.75V11.25C6.68384 11.2501 7.35568 11.4102 7.9634 11.7155C8.57112 12.0209 9.09694 12.4649 9.50002 13.0063C9.9031 12.4649 10.4289 12.0209 11.0366 11.7155C11.6444 11.4102 12.3162 11.2501 13 11.25V6.75H6Z"/>
+                <path d="M13 3.75V2.25H11.5V3.75H9.5V5.25H11.5V12.345C11.0213 12.8074 10.6356 13.3618 10.3693 13.973C10.067 14.6596 9.92486 15.4018 9.95454 16.1468C10.0126 17.6117 10.6821 18.9886 11.8 20.0059V21.75H13.25V20.0059C14.3179 18.9886 14.9874 17.6117 15.0455 16.1468C15.0751 15.4018 14.933 14.6596 14.6307 13.973C14.3644 13.3618 13.9787 12.8074 13.5 12.345V5.25H13V3.75ZM20.25 5.25H18V3.75H16.5V5.25H13V6.75H16.5V11.25C17.1838 11.2501 17.8557 11.4102 18.4634 11.7155C19.0711 12.0209 19.5969 12.4649 20 13.0063C20.4031 12.4649 20.9289 12.0209 21.5366 11.7155C22.1444 11.4102 22.8162 11.2501 23.5 11.25V5.25H21.75V3.75H20.25V5.25Z"/>
+            </svg>
+            <h1>Zazu</h1>
+        </div>
+        <div class="mb-4">
+            <button id="new-note-btn" class="btn btn-primary w-full">
+                <i class="fas fa-feather-alt fa-fw text-xs mr-1.5"></i>
+                <span>New Note</span>
+            </button>
+        </div>
+        <div class="relative flex items-center w-full search-input-wrapper">
+            <div class="search-icon-container">
+                <i class="fas fa-search"></i>
+            </div>
+            <input type="text" id="sidebar-search-input" placeholder="Search notes..." class="w-full">
+        </div>
+        <div class="section-group-title mt-3">
+            <h2>Sections</h2>
+        </div>
+        <div class="space-y-0.5" id="section-buttons">
+            <div class="section-button active" data-filter="all">
+                <i class="fas fa-inbox fa-fw w-4 text-center mr-1.5"></i>
+                <span>All Notes</span>
+            </div>
+            {% for label in labels %}
+            <div class="section-button" data-filter="{{ label }}">
+                <i class="fas fa-tag fa-fw w-4 text-center mr-1.5"></i>
+                <span>{{ label|capitalize }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <button id="theme-toggle-sidebar-btn" class="btn btn-secondary w-full mt-4">
+            <i class="fas fa-adjust fa-fw mr-1.5"></i>
+            <span>Toggle Theme</span>
+        </button>
+    </aside>
+    <div class="main-content flex-grow flex flex-col">
+        <header class="main-content-header">
+            <div class="max-w-6xl mx-auto w-full">
+                <div class="header-left-items">
+                    <button class="hamburger btn btn-icon" id="hamburger-btn">
+                        <i class="fas fa-bars text-base"></i>
+                    </button>
+                </div>
+                <div class="header-center-title">
+                    <h1 id="current-filter-title-desktop" class="hidden sm:block">All Notes</h1>
+                    <h1 id="current-filter-title-mobile" class="sm:hidden">Zazu</h1>
+                </div>
+                <div class="header-right-items">
+                </div>
+            </div>
+        </header>
+        <main class="flex-grow max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 w-full">
+            <div id="quick-note-input-area">
+                <div class="flex justify-between items-start mb-2.5">
+                    <textarea id="note-input" class="auto-resize flex-grow" placeholder="Capture a thought... (Markdown supported)"></textarea>
+                    <button id="expand-quick-note-btn" class="btn btn-icon btn-secondary ml-2 flex-shrink-0" title="Expand to Full Editor">
+                        <i class="fas fa-expand-alt"></i>
+                    </button>
+                </div>
+                <div class="quick-note-controls">
+                    <i class="fab fa-markdown text-base text-text-tertiary cursor-default flex-shrink-0" title="Markdown formatting is supported!"></i>
+                    <div class="quick-note-actions-right">
+                        <div id="quick-label-dropdown" class="custom-dropdown">
+                            <input type="hidden" id="label-select-value" name="label" value="{{ labels[0] if labels else 'idea' }}">
+                            <button type="button" class="dropdown-trigger">
+                                <span class="selected-value">{{ labels[0]|capitalize if labels else 'Idea' }}</span>
+                                <i class="fas fa-chevron-down arrow"></i>
+                            </button>
+                            <div class="dropdown-options">
+                                {% for label in labels %}
+                                <div class="option" data-value="{{ label }}"><span>{{ label|capitalize }}</span></div>
+                                {% endfor %}
+                                <div class="option add-label" data-value="add-label"><span>Add New Label</span></div>
+                            </div>
+                        </div>
+                        <button id="save-btn" class="btn btn-icon btn-primary" title="Save Note">
+                            <i class="fas fa-check fa-fw"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="labels-below-quick-input" class="labels-below-input hidden">
+                    {% for label in labels %}
+                    <button class="label-pill-button" data-label="{{ label }}">{{ label|capitalize }}</button>
+                    {% endfor %}
+                </div>
+            </div>
+            <div id="notes-container" class="mt-4">
+                <div id="empty-notes-placeholder" class="empty-state hidden py-10">
+                    <i class="fas fa-lightbulb text-3xl mb-2"></i>
+                    <p class="text-base font-medium">It's a bit quiet here...</p>
+                    <p class="text-xs text-text-tertiary mt-1">Create your first note or try a different section!</p>
+                </div>
+            </div>
+        </main>
+        <footer class="py-4 mt-auto">
+            <div class="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 text-center">
+                <p>© <span id="currentYear"></span> Zazu Notes. Crafted with <i class="fas fa-heart text-accent-secondary"></i>.</p>
+            </div>
+        </footer>
+    </div>
+    <div class="modal-overlay" id="fullscreen-modal">
+        <div class="modal-content">
+            <div class="editor-header">
+                <h2 id="modal-title">Create Note</h2>
+                <button id="close-fullscreen" class="btn btn-icon btn-secondary">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <textarea id="fullscreen-note-input" class="auto-resize" placeholder="Let your ideas flow... (Markdown supported)"></textarea>
+            <div class="flex flex-wrap gap-2.5 items-center justify-between mt-auto pt-3 border-t border-border-color">
+                <div class="flex items-center gap-2.5">
+                    <div id="fullscreen-label-dropdown" class="custom-dropdown">
+                        <input type="hidden" id="fullscreen-label-select-value" name="fullscreen-label" value="{{ labels[0] if labels else 'idea' }}">
+                        <button type="button" class="dropdown-trigger">
+                            <span class="selected-value">{{ labels[0]|capitalize if labels else 'Idea' }}</span>
+                            <i class="fas fa-chevron-down arrow"></i>
+                        </button>
+                        <div class="dropdown-options">
+                            {% for label in labels %}
+                            <div class="option" data-value="{{ label }}"><span>{{ label|capitalize }}</span></div>
+                            {% endfor %}
+                            <div class="option add-label" data-value="add-label"><span>Add New Label</span></div>
+                        </div>
+                    </div>
+                    <i class="fab fa-markdown text-base text-text-tertiary cursor-default" title="Markdown formatting is supported!"></i>
+                </div>
+                <button id="fullscreen-save-btn" class="btn btn-primary">
+                    <i class="fas fa-save fa-fw mr-1.5"></i>
+                    <span id="fullscreen-save-btn-text">Save Note</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <button id="theme-toggle-floating-btn" title="Toggle Theme">
+        <i class="fas fa-sun"></i>
+        <i class="fas fa-moon"></i>
+    </button>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const body = document.body;
+            const quickNoteInput = document.getElementById('note-input');
+            const saveBtn = document.getElementById('save-btn');
+            const notesContainer = document.getElementById('notes-container');
+            const sidebarSearchInput = document.getElementById('sidebar-search-input');
+            const sectionButtonsContainer = document.getElementById('section-buttons');
+            const sectionButtons = document.querySelectorAll('.section-button');
+            const emptyNotesPlaceholder = document.getElementById('empty-notes-placeholder');
+            const currentFilterTitleDesktop = document.getElementById('current-filter-title-desktop');
+            const currentFilterTitleMobile = document.getElementById('current-filter-title-mobile');
+            const newNoteBtn = document.getElementById('new-note-btn');
+            const expandQuickNoteBtn = document.getElementById('expand-quick-note-btn');
+            const fullscreenModal = document.getElementById('fullscreen-modal');
+            const closeFullscreenBtn = document.getElementById('close-fullscreen');
+            const fullscreenNoteInput = document.getElementById('fullscreen-note-input');
+            const fullscreenSaveBtn = document.getElementById('fullscreen-save-btn');
+            const modalTitleEl = document.getElementById('modal-title');
+            const fullscreenSaveBtnText = document.getElementById('fullscreen-save-btn-text');
+            const hamburgerBtn = document.getElementById('hamburger-btn');
+            const sidebar = document.getElementById('sidebar');
+            const mobileSidebarBackdrop = document.getElementById('mobile-sidebar-backdrop');
+            const themeToggleFloatingBtn = document.getElementById('theme-toggle-floating-btn');
+            const themeToggleSidebarBtn = document.getElementById('theme-toggle-sidebar-btn');
+            const hljsThemeDark = document.getElementById('hljs-theme-dark');
+            const hljsThemeLight = document.getElementById('hljs-theme-light');
+            let currentFilter = 'all';
+            let editingNote = null;
+            document.getElementById('currentYear').textContent = new Date().getFullYear();
+            marked.setOptions({
+                highlight: function(code, lang) {
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    return hljs.highlight(code, { language, ignoreIllegals: true }).value;
+                },
+                pedantic: false, gfm: true, breaks: true, sanitize: false,
+                smartLists: true, smartypants: false, xhtml: false
+            });
+            function autoResizeTextarea(textarea) {
+                if (!textarea) return;
+                textarea.style.height = 'auto';
+                textarea.style.height = (textarea.scrollHeight) + 'px';
+            }
+            [quickNoteInput, fullscreenNoteInput].forEach(textarea => {
+                if (textarea) {
+                    textarea.addEventListener('input', () => autoResizeTextarea(textarea));
+                    if(textarea.value) autoResizeTextarea(textarea);
+                }
+            });
+            async function addNewLabel(dropdownContainerId, newLabel) {
+                if (!newLabel) return;
+                try {
+                    const response = await fetch('/add_label', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ label: newLabel.toLowerCase().replace(/\s+/g, '-') })
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to add new label');
+                    }
+                    window.location.reload();
+                } catch (error) {
+                    console.error('Error adding new label:', error);
+                    alert(`Could not add label: ${error.message}`);
+                }
+            }
+            function setupCustomDropdown(dropdownContainerId) {
+                const container = document.getElementById(dropdownContainerId);
+                if (!container) return;
+                const trigger = container.querySelector('.dropdown-trigger');
+                const optionsContainer = container.querySelector('.dropdown-options');
+                const hiddenInput = container.querySelector('input[type="hidden"]');
+                const selectedValueDisplay = trigger.querySelector('.selected-value');
+                if (!trigger || !optionsContainer || !hiddenInput || !selectedValueDisplay) {
+                    console.warn('Dropdown elements missing for ID:', dropdownContainerId);
+                    return;
+                }
+                trigger.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    document.querySelectorAll('.custom-dropdown .dropdown-options.open').forEach(openDropdown => {
+                        if (openDropdown !== optionsContainer) {
+                            openDropdown.classList.remove('open');
+                            const otherTrigger = openDropdown.closest('.custom-dropdown').querySelector('.dropdown-trigger');
+                            if (otherTrigger) otherTrigger.classList.remove('open');
+                        }
+                    });
+                    optionsContainer.classList.toggle('open');
+                    trigger.classList.toggle('open');
+                });
+                optionsContainer.querySelectorAll('.option').forEach(option => {
+                    option.addEventListener('click', async () => {
+                        if (option.classList.contains('add-label')) {
+                            const newLabel = prompt('Enter new label name:');
+                            if (newLabel && newLabel.trim()) {
+                                await addNewLabel(dropdownContainerId, newLabel.trim());
+                            }
+                            optionsContainer.classList.remove('open');
+                            trigger.classList.remove('open');
+                            return;
+                        }
+                        hiddenInput.value = option.dataset.value;
+                        selectedValueDisplay.textContent = option.textContent.trim();
+                        optionsContainer.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                        optionsContainer.classList.remove('open');
+                        trigger.classList.remove('open');
+                        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    });
+                    if (option.dataset.value === hiddenInput.value && !option.classList.contains('add-label')) {
+                        option.classList.add('selected');
+                        selectedValueDisplay.textContent = option.textContent.trim();
+                    }
+                });
+            }
+            setupCustomDropdown('quick-label-dropdown');
+            setupCustomDropdown('fullscreen-label-dropdown');
+            document.addEventListener('click', (e) => {
+                document.querySelectorAll('.custom-dropdown .dropdown-options.open').forEach(openDropdown => {
+                    const customDropdownElement = openDropdown.closest('.custom-dropdown');
+                    if (customDropdownElement && !customDropdownElement.contains(e.target)) {
+                        openDropdown.classList.remove('open');
+                        const trigger = customDropdownElement.querySelector('.dropdown-trigger');
+                        if (trigger) trigger.classList.remove('open');
+                    }
+                });
+            });
+            if (hamburgerBtn) {
+                hamburgerBtn.addEventListener('click', () => {
+                    if (sidebar) sidebar.classList.toggle('active');
+                    if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.toggle('active');
+                });
+            }
+            if (mobileSidebarBackdrop) {
+                mobileSidebarBackdrop.addEventListener('click', () => {
+                    if (sidebar) sidebar.classList.remove('active');
+                    mobileSidebarBackdrop.classList.remove('active');
+                });
+            }
+            function applyTheme(theme) {
+                const sunIcon = themeToggleFloatingBtn ? themeToggleFloatingBtn.querySelector('.fa-sun') : null;
+                const moonIcon = themeToggleFloatingBtn ? themeToggleFloatingBtn.querySelector('.fa-moon') : null;
+                if (theme === 'dark') {
+                    body.classList.add('dark-theme');
+                    if (sunIcon) sunIcon.style.display = 'none';
+                    if (moonIcon) moonIcon.style.display = 'inline-block';
+                    if (hljsThemeDark) hljsThemeDark.removeAttribute('media');
+                    if (hljsThemeLight) hljsThemeLight.setAttribute('media', 'false');
+                } else {
+                    body.classList.remove('dark-theme');
+                    if (sunIcon) sunIcon.style.display = 'inline-block';
+                    if (moonIcon) moonIcon.style.display = 'none';
+                    if (hljsThemeLight) hljsThemeLight.removeAttribute('media');
+                    if (hljsThemeDark) hljsThemeDark.setAttribute('media', 'false');
+                }
+                localStorage.setItem('theme', theme);
+            }
+            function toggleTheme() {
+                const currentTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+                applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+            }
+            if (themeToggleFloatingBtn) themeToggleFloatingBtn.addEventListener('click', toggleTheme);
+            if (themeToggleSidebarBtn) themeToggleSidebarBtn.addEventListener('click', toggleTheme);
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            applyTheme(savedTheme || (systemPrefersDark ? 'dark' : 'light'));
+            if (saveBtn) saveBtn.addEventListener('click', () => {
+                const labelEl = document.getElementById('quick-label-dropdown');
+                const label = labelEl ? labelEl.querySelector('input[type="hidden"]').value : '';
+                handleSaveOrUpdateNote(quickNoteInput, label);
+            });
+            if (fullscreenSaveBtn) fullscreenSaveBtn.addEventListener('click', () => {
+                const labelEl = document.getElementById('fullscreen-label-dropdown');
+                const label = labelEl ? labelEl.querySelector('input[type="hidden"]').value : '';
+                handleSaveOrUpdateNote(fullscreenNoteInput, label, true);
+            });
+            if (newNoteBtn) newNoteBtn.addEventListener('click', () => openFullscreenModal());
+            if (expandQuickNoteBtn) expandQuickNoteBtn.addEventListener('click', () => {
+                const labelEl = document.getElementById('quick-label-dropdown');
+                const label = labelEl ? labelEl.querySelector('input[type="hidden"]').value : null;
+                openFullscreenModal(quickNoteInput ? quickNoteInput.value : '', label);
+            });
+            if (closeFullscreenBtn) closeFullscreenBtn.addEventListener('click', closeFullscreenModal);
+            if (sidebarSearchInput) sidebarSearchInput.addEventListener('input', () => fetchAndRenderNotes(currentFilter, sidebarSearchInput.value.trim()));
+            sectionButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    sectionButtons.forEach(btn => btn.classList.remove('active'));
+                    this.classList.add('active');
+                    currentFilter = this.dataset.filter;
+                    const sectionTitle = this.querySelector('span').textContent;
+                    if(currentFilterTitleDesktop) currentFilterTitleDesktop.textContent = sectionTitle;
+                    if(currentFilterTitleMobile) currentFilterTitleMobile.textContent = sectionTitle;
+                    fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
+                    if (sidebar && sidebar.classList.contains('active') && window.innerWidth < 768) {
+                        sidebar.classList.remove('active');
+                        if (mobileSidebarBackdrop) mobileSidebarBackdrop.classList.remove('active');
+                    }
+                });
+            });
+            async function handleSaveOrUpdateNote(inputElement, labelValue, fromFullscreen = false) {
+                if (!inputElement) return;
+                const content = inputElement.value.trim();
+                const label = labelValue;
+                if (!content) {
+                    console.warn('Note content cannot be empty.');
+                    inputElement.focus();
+                    return;
+                }
+                const noteData = {
+                    content: content,
+                    label: label,
+                    filename: editingNote ? editingNote.filename : null
+                };
+                try {
+                    const endpoint = editingNote ? '/update' : '/save';
+                    const response = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(noteData)
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || `Failed to ${editingNote ? 'update' : 'save'} note`);
+                    }
+                    fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
+                    inputElement.value = '';
+                    autoResizeTextarea(inputElement);
+                    if (fromFullscreen) {
+                        closeFullscreenModal();
+                    } else {
+                        const quickDropdown = document.getElementById('quick-label-dropdown');
+                        if (quickDropdown) {
+                            const qHiddenInput = quickDropdown.querySelector('input[type="hidden"]');
+                            const qSelectedDisplay = quickDropdown.querySelector('.selected-value');
+                            const qOptions = quickDropdown.querySelectorAll('.dropdown-options .option:not(.add-label)');
+                            if(qOptions.length > 0 && qHiddenInput && qSelectedDisplay) {
+                                const firstVal = qOptions[0].dataset.value;
+                                const firstText = qOptions[0].textContent.trim();
+                                qHiddenInput.value = firstVal;
+                                qSelectedDisplay.textContent = firstText;
+                                qOptions.forEach(opt => opt.classList.remove('selected'));
+                                qOptions[0].classList.add('selected');
+                            }
+                        }
+                    }
+                    editingNote = null;
+                } catch (error) {
+                    console.error(`Error ${editingNote ? 'updating' : 'saving'} note:`, error);
+                    alert(`Could not ${editingNote ? 'update' : 'save'} note: ${error.message}`);
+                }
+            }
+            function openFullscreenModal(content = '', label = null, noteToEdit = null) {
+                editingNote = noteToEdit;
+                if (fullscreenNoteInput) {
+                    fullscreenNoteInput.value = content || (editingNote ? editingNote.content : '');
+                    autoResizeTextarea(fullscreenNoteInput);
+                }
+                const fsDropdown = document.getElementById('fullscreen-label-dropdown');
+                if (fsDropdown) {
+                    const fsHiddenInput = fsDropdown.querySelector('input[type="hidden"]');
+                    const fsSelectedDisplay = fsDropdown.querySelector('.selected-value');
+                    const fsOptions = fsDropdown.querySelectorAll('.dropdown-options .option:not(.add-label)');
+                    if (fsHiddenInput && fsSelectedDisplay && fsOptions) {
+                        let targetLabelValue = '';
+                        let targetLabelText = 'Select Label';
+                        if (noteToEdit && noteToEdit.label) { targetLabelValue = noteToEdit.label; }
+                        else if (label) { targetLabelValue = label; }
+                        else if (fsOptions.length > 0) { targetLabelValue = fsOptions[0].dataset.value; }
+                        fsHiddenInput.value = targetLabelValue;
+                        let labelFound = false;
+                        fsOptions.forEach(opt => {
+                            opt.classList.remove('selected');
+                            if (opt.dataset.value === targetLabelValue) {
+                                opt.classList.add('selected');
+                                targetLabelText = opt.textContent.trim();
+                                labelFound = true;
+                            }
+                        });
+                        if (!labelFound && fsOptions.length > 0) {
+                            targetLabelText = fsOptions[0].textContent.trim();
+                            fsHiddenInput.value = fsOptions[0].dataset.value;
+                            fsOptions[0].classList.add('selected');
+                        } else if (fsOptions.length === 0) {
+                            targetLabelText = 'No Labels';
+                        }
+                        fsSelectedDisplay.textContent = targetLabelText;
+                    }
+                }
+                if (fullscreenModal) fullscreenModal.classList.add('active');
+                setTimeout(() => { if (fullscreenNoteInput) fullscreenNoteInput.focus(); }, 50);
+                if (modalTitleEl) modalTitleEl.textContent = editingNote ? 'Edit Note' : 'Create Note';
+                if (fullscreenSaveBtnText) fullscreenSaveBtnText.textContent = editingNote ? 'Update Note' : 'Save Note';
+            }
+            function closeFullscreenModal() {
+                if (fullscreenModal) fullscreenModal.classList.remove('active');
+                editingNote = null;
+            }
+            async function fetchAndRenderNotes(filter = 'all', searchTerm = '') {
+                try {
+                    const queryParams = new URLSearchParams();
+                    if (filter !== 'all') queryParams.append('label', filter);
+                    if (searchTerm) queryParams.append('search', searchTerm);
+                    const response = await fetch(`/notes?${queryParams.toString()}`, {
+                        method: 'GET',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error || 'Failed to fetch notes');
+                    }
+                    const notes = await response.json();
+                    renderNotes(notes);
+                } catch (error) {
+                    console.error('Error fetching notes:', error);
+                    if (notesContainer) notesContainer.innerHTML = '';
+                    if (emptyNotesPlaceholder) {
+                        emptyNotesPlaceholder.classList.remove('hidden');
+                        const p1 = emptyNotesPlaceholder.querySelector('p:first-of-type');
+                        const p2 = emptyNotesPlaceholder.querySelector('p:last-of-type');
+                        if (p1) p1.textContent = "Could not load notes.";
+                        if (p2) p2.textContent = "Please check your connection or try again later.";
+                    }
+                }
+            }
+            function renderNotes(notes) {
+                if (!notesContainer) return;
+                notesContainer.innerHTML = '';
+                if (!Array.isArray(notes) || notes.length === 0) {
+                    if (emptyNotesPlaceholder) {
+                        emptyNotesPlaceholder.classList.remove('hidden');
+                        const p1 = emptyNotesPlaceholder.querySelector('p:first-of-type');
+                        const p2 = emptyNotesPlaceholder.querySelector('p:last-of-type');
+                        const currentSearch = sidebarSearchInput ? sidebarSearchInput.value.trim() : '';
+                        if (p1) p1.textContent = currentSearch || currentFilter !== 'all' ? "No notes match your criteria." : "No notes yet.";
+                        if (p2) p2.textContent = currentSearch || currentFilter !== 'all' ? "Try a different search or filter." : "Create your first note!";
+                    }
+                    return;
+                }
+                if (emptyNotesPlaceholder) emptyNotesPlaceholder.classList.add('hidden');
+                let lastRenderedDate = null;
+                notes.forEach((note, index) => {
+                    if (!note || !note.timestamp || !note.content) {
+                        console.warn(`Invalid note at index ${index}:`, note);
+                        return;
+                    }
+                    const noteDateTime = new Date(note.timestamp);
+                    if (isNaN(noteDateTime.getTime())) {
+                        console.warn(`Invalid timestamp for note at index ${index}:`, note.timestamp);
+                        return;
+                    }
+                    const noteDate = noteDateTime.toLocaleDateString(undefined, {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                    });
+                    if (noteDate !== lastRenderedDate) {
+                        const dateHeaderEl = document.createElement('h2');
+                        dateHeaderEl.className = 'date-header';
+                        dateHeaderEl.textContent = noteDate;
+                        notesContainer.appendChild(dateHeaderEl);
+                        lastRenderedDate = noteDate;
+                    }
+                    const noteEl = createNoteElement(note, noteDateTime);
+                    notesContainer.appendChild(noteEl);
+                });
+            }
+            function createNoteElement(note, noteDateTime) {
+                const noteEl = document.createElement('article');
+                const labelClass = `label-${note.label ? note.label.toLowerCase().replace(/[^a-z0-9]/gi, '-') : 'general'}`;
+                noteEl.className = `note-card relative ${labelClass}`;
+                noteEl.dataset.filename = note.filename;
+                const MAX_CONTENT_PREVIEW_CHARS = 100;
+                let displayContentPreview = note.content.split('\n').join(' ').trim();
+                if (displayContentPreview.length > MAX_CONTENT_PREVIEW_CHARS) {
+                    displayContentPreview = displayContentPreview.substring(0, MAX_CONTENT_PREVIEW_CHARS) + '...';
+                }
+                const isLongContent = note.content.length > MAX_CONTENT_PREVIEW_CHARS || note.content.includes('```') || note.content.split('\n').length > 5;
+                noteEl.innerHTML = `
+                    <div class="note-actions">
+                        <button class="edit-btn btn btn-icon btn-sm" title="Edit Note"><i class="fas fa-pencil-alt"></i></button>
+                        <button class="delete-btn btn btn-icon btn-sm" title="Delete Note"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="note-metadata">
+                        <div class="note-label-pills">
+                            <span class="note-label-display">${note.label ? (note.label.charAt(0).toUpperCase() + note.label.slice(1)) : 'Unlabeled'}</span>
+                        </div>
+                        <span class="note-time">${noteDateTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
+                    </div>
+                    <div class="prose content-preview text-sm">
+                        <p style="color: var(--text-secondary); font-size: 0.9em; line-height: 1.4;">${marked.parseInline(displayContentPreview.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}</p>
+                    </div>
+                    ${isLongContent ? '<div class="mt-1.5 text-right"><span class="show-more text-accent-primary text-xs font-semibold cursor-pointer hover:underline">Show more</span></div>' : ''}
+                    <div class="prose content-full text-sm hidden">${marked.parse(note.content.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}</div>
+                `;
+                const showMoreBtn = noteEl.querySelector('.show-more');
+                if (showMoreBtn) {
+                    const contentPreviewEl = noteEl.querySelector('.content-preview');
+                    const contentFullEl = noteEl.querySelector('.content-full');
+                    showMoreBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const isHidden = contentFullEl.classList.contains('hidden');
+                        if (contentPreviewEl) contentPreviewEl.classList.toggle('hidden', isHidden);
+                        if (contentFullEl) contentFullEl.classList.toggle('hidden', !isHidden);
+                        showMoreBtn.textContent = isHidden ? 'Show less' : 'Show more';
+                    });
+                }
+                const editBtn = noteEl.querySelector('.edit-btn');
+                if (editBtn) editBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    openFullscreenModal(note.content, note.label, note);
+                });
+                const deleteBtn = noteEl.querySelector('.delete-btn');
+                if (deleteBtn) deleteBtn.addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    if (confirm('Are you sure you want to delete this note?')) {
+                        try {
+                            const response = await fetch('/delete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ filename: note.filename })
+                            });
+                            if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.error || 'Failed to delete note');
+                            }
+                            fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
+                        } catch (error) {
+                            console.error('Error deleting note:', error);
+                            alert(`Could not delete note: ${error.message}`);
+                        }
+                    }
+                });
+                return noteEl;
+            }
+            fetchAndRenderNotes();
+        });
+    </script>
+</body>
+</html>
