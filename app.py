@@ -1,217 +1,258 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import datetime
-import uuid
-from pathlib import Path
+from functools import wraps
 import logging
+import uuid 
 
+# --- Configuration and Initialization ---
 app = Flask(__name__)
 
-DATA_DIR = Path("data")
+# Database Configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///zazu_notes.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_super_secret_dev_key_change_me')
+
+db = SQLAlchemy(app)
+
+# Configuration
+DEVELOPMENT_TOKEN = "abraca"
+ADMIN_EMAIL = "bravesamarth@gmail.com"
+SUPPORT_EMAIL = "bravesamarth@gmail.com"
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def get_current_labels():
-    if not DATA_DIR.exists():
-        return []
-    return sorted([d.name for d in DATA_DIR.iterdir() if d.is_dir()])
+# --- Database Models ---
 
-def ensure_data_dir_and_label(label_name):
-    DATA_DIR.mkdir(exist_ok=True)
-    label_dir = DATA_DIR / label_name
-    label_dir.mkdir(exist_ok=True)
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128)) 
+    is_admin = db.Column(db.Boolean, default=False)
+    notes = db.relationship('Note', backref='author', lazy='dynamic')
 
-def save_note(content, label):
-    ensure_data_dir_and_label(label)
-    timestamp = datetime.datetime.now().isoformat()
-    unique_id = uuid.uuid4().hex
-    filename = f"{timestamp.replace(':', '-').replace('.', '-')}-{unique_id[:8]}.md"
-    filepath = DATA_DIR / label / filename
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+class Note(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, index=True, default=datetime.datetime.now)
+    content = db.Column(db.Text, nullable=False)
+    label = db.Column(db.String(50), default='idea')
+    title = db.Column(db.String(100))
+
+    def __repr__(self):
+        return f'<Note {self.id}: {self.title}>'
+
+# --- Utility Functions ---
+
+def token_required(f):
+    """Decorator to enforce the development token access."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('token_authenticated'):
+            return redirect(url_for('token_login_route'))
+        
+        # In this simple token mode, we assume a single user (ID 1) or Admin
+        current_user_id = session.get('user_id', 1) 
+        user = db.session.get(User, current_user_id)
+        if not user:
+            create_default_admin()
+            user = db.session.get(User, 1)
+
+        kwargs['current_user'] = user
+        return f(*args, **kwargs)
+    return decorated_function
+
+def get_current_labels(user_id):
+    labels = db.session.query(Note.label).filter_by(user_id=user_id).distinct().all()
+    return sorted([label[0] for label in labels if label[0] and label[0].lower() != 'all'])
+
+def create_default_admin():
+    if not db.session.get(User, 1):
+        admin = User(name="Admin User", email=ADMIN_EMAIL, is_admin=True)
+        admin.set_password('admin_password_placeholder') 
+        db.session.add(admin)
+        db.session.commit()
+        logger.info("Default admin user created.")
+
+# --- Note Operations ---
+
+def save_note(content, label, user_id):
     title = content.split('\n', 1)[0][:70] + '...' if len(content.split('\n', 1)[0]) > 70 else content.split('\n', 1)[0]
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(f"---\n")
-        f.write(f"timestamp: {timestamp}\n")
-        f.write(f"label: {label}\n")
-        f.write(f"title: {title}\n")
-        f.write(f"---\n\n")
-        f.write(content)
-    return timestamp, filename
+    new_note = Note(content=content, label=label, title=title, user_id=user_id)
+    db.session.add(new_note)
+    db.session.commit()
+    return new_note.timestamp.isoformat(), new_note.id
 
-def get_notes():
-    notes = []
-    current_labels = get_current_labels()
-    for label in current_labels:
-        label_dir = DATA_DIR / label
-        for filepath in label_dir.glob("*.md"):
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    full_content = f.read()
-                if "---\n" not in full_content:
-                    notes.append({
-                        "timestamp": datetime.datetime.fromtimestamp(filepath.stat().st_mtime).isoformat(),
-                        "label": label,
-                        "title": filepath.stem[:50],
-                        "content": full_content,
-                        "filename": filepath.name
-                    })
-                    continue
-                metadata_section, body = full_content.split("---\n\n", 1)
-                metadata_content = metadata_section.replace("---", "").strip()
-                metadata_dict = {}
-                for line in metadata_content.split("\n"):
-                    if ": " not in line:
-                        continue
-                    key, value = line.split(": ", 1)
-                    metadata_dict[key.strip()] = value.strip()
-                note_timestamp = metadata_dict.get("timestamp", datetime.datetime.fromtimestamp(filepath.stat().st_mtime).isoformat())
-                note_label = metadata_dict.get("label", label)
-                note_title = metadata_dict.get("title", body.split('\n',1)[0][:50] + "..." if body else filepath.stem[:50])
-                notes.append({
-                    "timestamp": note_timestamp,
-                    "label": note_label,
-                    "title": note_title,
-                    "content": body.strip(),
-                    "filename": filepath.name
-                })
-            except Exception as e:
-                logger.error(f"Error processing {filepath}: {e}")
-                continue
-    return sorted(notes, key=lambda x: x["timestamp"], reverse=True)
-
-def delete_note_file(label, filename):
-    filepath = DATA_DIR / label / filename
-    if filepath.exists():
-        try:
-            filepath.unlink()
-            logger.info(f"Deleted note: {filepath}")
-            if not any(filepath.parent.iterdir()):
-                logger.info(f"Label directory {filepath.parent} is empty, removing.")
-                filepath.parent.rmdir()
-            return True
-        except Exception as e:
-            logger.error(f"Error deleting file {filepath}: {e}")
-            return False
+def delete_note_by_id(note_id, user_id):
+    note = db.session.get(Note, note_id)
+    if note and note.user_id == user_id:
+        db.session.delete(note)
+        db.session.commit()
+        return True
     return False
 
-def update_note_content(original_label, filename, new_content, new_label):
-    original_filepath = DATA_DIR / original_label / filename
-    if not original_filepath.exists():
-        return False
-    if new_label != original_label:
-        ensure_data_dir_and_label(new_label)
-        new_filepath = DATA_DIR / new_label / filename
-        try:
-            original_filepath.rename(new_filepath)
-            logger.info(f"Moved note from {original_filepath} to {new_filepath}")
-        except Exception as e:
-            logger.error(f"Error moving file: {e}")
-            return False
-    else:
-        new_filepath = original_filepath
-    try:
-        with open(new_filepath, "r", encoding="utf-8") as f:
-            current_full_content = f.read()
-        if current_full_content.startswith("---"):
-            metadata_section, _ = current_full_content.split("---\n\n", 1)
-            metadata_lines = metadata_section.split("\n")
-            updated_metadata = []
-            for line in metadata_lines:
-                if line.startswith("label:"):
-                    updated_metadata.append(f"label: {new_label}")
-                else:
-                    updated_metadata.append(line)
-            metadata_section = "\n".join(updated_metadata) + "\n---\n\n"
-        else:
-            metadata_section = f"---\ntimestamp: {datetime.datetime.now().isoformat()}\nlabel: {new_label}\ntitle: {new_content.splitlines()[0][:50]}\n---\n\n"
-        with open(new_filepath, "w", encoding="utf-8") as f:
-            f.write(metadata_section)
-            f.write(new_content)
-        logger.info(f"Updated note: {new_filepath}")
+def update_note_content(note_id, new_content, new_label, user_id):
+    note = db.session.get(Note, note_id)
+    if note and note.user_id == user_id:
+        note.content = new_content
+        note.label = new_label
+        note.title = new_content.split('\n', 1)[0][:70] + '...' if len(new_content.split('\n', 1)[0]) > 70 else new_content.split('\n', 1)[0]
+        db.session.commit()
         return True
-    except Exception as e:
-        logger.error(f"Error updating file {new_filepath}: {e}")
-        return False
+    return False
 
-@app.route("/")
-def index():
-    ensure_data_dir_and_label("idea")
-    current_labels = get_current_labels()
-    return render_template("index.html", labels=current_labels)
+# --- Routes ---
+
+@app.before_request
+def setup_user_and_db():
+    if not os.path.exists('zazu_notes.db'):
+        with app.app_context():
+            db.create_all()
+            create_default_admin()
+
+@app.route("/", methods=["GET", "POST"])
+@app.route("/token_login", methods=["GET", "POST"])
+def token_login_route():
+    if session.get('token_authenticated'):
+        return redirect(url_for('index'))
+    
+    if request.method == "POST":
+        token = request.form.get("token")
+        if token == DEVELOPMENT_TOKEN:
+            session['token_authenticated'] = True
+            session['user_id'] = 1 # Default to Admin ID 1
+            return redirect(url_for('index'))
+        else:
+            flash("Invalid access token.", 'error')
+            return redirect(url_for('token_login_route'))
+
+    return render_template('token_login.html', support_email=SUPPORT_EMAIL)
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    if request.method == "POST":
+        data = request.json
+        name = data.get('name')
+        email = data.get('email')
+        
+        if not name or not email:
+            return jsonify({"error": "Name and email are required"}), 400
+        
+        if db.session.execute(db.select(User).filter_by(email=email)).scalar():
+            return jsonify({"error": "User with this email already exists"}), 400
+        
+        new_user = User(name=name, email=email)
+        new_user.set_password(str(uuid.uuid4())) # Dummy password
+        
+        try:
+            db.session.add(new_user)
+            db.session.commit()
+            return jsonify({"success": True, "message": f"Sign up successful. Please wait for the admin ({ADMIN_EMAIL}) to share your access token.", "admin_email": ADMIN_EMAIL}), 201
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"error": "Failed to save user data."}), 500
+    return jsonify({"error": "Use POST to sign up."}), 405
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for('token_login_route'))
+
+@app.route("/notes_app")
+@token_required
+def index(current_user):
+    current_labels = get_current_labels(current_user.id)
+    return render_template("index.html", labels=current_labels, is_admin=current_user.is_admin, current_user=current_user)
+
+@app.route("/admin")
+@token_required
+def admin_dashboard(current_user):
+    if not current_user.is_admin:
+        flash("Access Denied: You are not an admin.", 'error')
+        return redirect(url_for('index'))
+    users = db.session.execute(db.select(User)).scalars().all()
+    return render_template("admin_dashboard.html", users=users, token=DEVELOPMENT_TOKEN)
+
+# --- API Routes ---
 
 @app.route("/add_label", methods=["POST"])
-def add_label_route():
+@token_required
+def add_label_route(current_user):
     data = request.json
     new_label = data.get("label", "").strip().lower()
-    if not new_label:
-        return jsonify({"error": "Label name cannot be empty"}), 400
-    if not new_label.isalnum():
-        return jsonify({"error": "Label name must be alphanumeric"}), 400
-    current_labels = get_current_labels()
-    if new_label in current_labels:
-        return jsonify({"error": "Label already exists"}), 400
-    ensure_data_dir_and_label(new_label)
-    logger.info(f"Added new label: {new_label}")
-    return jsonify({"success": True, "message": f"Label '{new_label}' added.", "labels": get_current_labels()}), 201
+    if not new_label or not new_label.isalnum():
+        return jsonify({"error": "Invalid label"}), 400
+    return jsonify({"success": True, "labels": get_current_labels(current_user.id)}), 201
 
 @app.route("/save", methods=["POST"])
-def save():
+@token_required
+def save(current_user):
     data = request.json
     content = data.get("content")
     label = data.get("label")
-    if not content or not label:
-        return jsonify({"error": "Content and label are required"}), 400
+    if not content or not label: return jsonify({"error": "Missing data"}), 400
     try:
-        timestamp, filename = save_note(content, label)
-        return jsonify({"timestamp": timestamp, "filename": filename, "label": label, "labels": get_current_labels()}), 201
+        timestamp, note_id = save_note(content, label, current_user.id)
+        return jsonify({"timestamp": timestamp, "id": note_id, "label": label, "labels": get_current_labels(current_user.id)}), 201
     except Exception as e:
         logger.error(f"Error saving note: {e}")
-        return jsonify({"error": f"Failed to save note: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/notes", methods=["GET"])
-def notes_route():
+@token_required
+def notes_route(current_user):
     label_filter = request.args.get('label')
     search_term = request.args.get('search')
-    all_notes = get_notes()
-    filtered_notes = all_notes
-    if label_filter and label_filter != 'all':
-        filtered_notes = [note for note in filtered_notes if note['label'] == label_filter]
-    if search_term:
-        lower_search = search_term.lower()
-        filtered_notes = [
-            note for note in filtered_notes
-            if lower_search in note['content'].lower() or
-               lower_search in note['title'].lower() or
-               (note.get('label') and lower_search in note['label'].lower())
-        ]
+    query = db.select(Note).filter_by(user_id=current_user.id).order_by(Note.timestamp.desc())
+    notes = db.session.execute(query).scalars()
+    
+    filtered_notes = []
+    for note in notes:
+        if label_filter and label_filter != 'all' and note.label != label_filter: continue
+        if search_term:
+            low_s = search_term.lower()
+            if not (low_s in note.content.lower() or low_s in note.title.lower()): continue
+        
+        filtered_notes.append({
+            "id": note.id,
+            "timestamp": note.timestamp.isoformat(),
+            "label": note.label,
+            "title": note.title,
+            "content": note.content,
+            "filename": str(note.id)
+        })
     return jsonify(filtered_notes)
 
 @app.route("/delete", methods=["POST"])
-def delete():
-    data = request.json
-    label = data.get("label")
-    filename = data.get("filename")
-    if not label or not filename:
-        return jsonify({"error": "Label and filename are required"}), 400
-    if delete_note_file(label, filename):
-        return jsonify({"success": True, "labels": get_current_labels()})
-    else:
-        return jsonify({"error": "Failed to delete note or note not found"}), 404
+@token_required
+def delete(current_user):
+    note_id = request.json.get("filename")
+    if delete_note_by_id(int(note_id), current_user.id):
+        return jsonify({"success": True, "labels": get_current_labels(current_user.id)})
+    return jsonify({"error": "Failed"}), 404
 
 @app.route("/update", methods=["POST"])
-def update():
+@token_required
+def update(current_user):
     data = request.json
-    original_label = data.get("original_label")
-    filename = data.get("filename")
-    content = data.get("content")
-    new_label = data.get("label", original_label)
-    if not original_label or not filename or content is None:
-        return jsonify({"error": "Original label, filename, and content are required"}), 400
-    if update_note_content(original_label, filename, content, new_label):
-        return jsonify({"success": True, "new_label": new_label})
-    else:
-        return jsonify({"error": "Failed to update note or note not found"}), 404
+    note_id = int(data.get("filename"))
+    if update_note_content(note_id, data.get("content"), data.get("label"), current_user.id):
+        return jsonify({"success": True})
+    return jsonify({"error": "Failed"}), 404
 
 if __name__ == "__main__":
-    DATA_DIR.mkdir(exist_ok=True)
+    with app.app_context():
+        db.create_all()
+        create_default_admin()
     app.run(debug=True)

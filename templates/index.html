@@ -7,6 +7,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css" id="hljs-theme-dark" media="false">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-light.min.css" id="hljs-theme-light" media="false">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -243,6 +247,9 @@
         .prose a:hover { text-decoration: underline; color: var(--accent-primary-hover); }
         .prose blockquote { border-left: 2px solid var(--accent-primary); padding-left: 0.8em; font-style: italic; color: var(--text-secondary); margin: 1em 0; background-color: transparent; border-radius: 0; transition: border-color var(--transition-main), color var(--transition-main);}
         .dark-theme .prose blockquote { background-color: rgba(255,255,255,0.03); }
+        /* KaTeX Adjustments */
+        .katex { font-size: 1.1em; } 
+
         #quick-note-input-area {
             background-color: var(--bg-quick-note-area);
             border-radius: var(--radius-md);
@@ -487,6 +494,16 @@
                 <span>New Note</span>
             </button>
         </div>
+        
+        {% if is_admin %}
+        <div class="mb-4">
+            <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary w-full text-red-500 border-red-200 hover:bg-red-50">
+                <i class="fas fa-lock fa-fw text-xs mr-1.5"></i>
+                <span>Admin Dashboard</span>
+            </a>
+        </div>
+        {% endif %}
+
         <div class="relative flex items-center w-full search-input-wrapper">
             <div class="search-icon-container">
                 <i class="fas fa-search"></i>
@@ -508,10 +525,17 @@
             </div>
             {% endfor %}
         </div>
-        <button id="theme-toggle-sidebar-btn" class="btn btn-secondary w-full mt-4">
-            <i class="fas fa-adjust fa-fw mr-1.5"></i>
-            <span>Toggle Theme</span>
-        </button>
+        
+        <div class="mt-auto pt-4 border-t border-border-color space-y-2">
+            <button id="theme-toggle-sidebar-btn" class="btn btn-secondary w-full justify-start">
+                <i class="fas fa-adjust fa-fw mr-1.5"></i>
+                <span>Toggle Theme</span>
+            </button>
+            <a href="{{ url_for('logout') }}" class="btn btn-secondary w-full justify-start text-red-500 hover:bg-red-50 border-transparent">
+                <i class="fas fa-sign-out-alt fa-fw mr-1.5"></i>
+                <span>Logout</span>
+            </a>
+        </div>
     </aside>
     <div class="main-content flex-grow flex flex-col">
         <header class="main-content-header">
@@ -532,13 +556,16 @@
         <main class="flex-grow max-w-4xl mx-auto px-3 sm:px-4 lg:px-6 py-4 w-full">
             <div id="quick-note-input-area">
                 <div class="flex justify-between items-start mb-2.5">
-                    <textarea id="note-input" class="auto-resize flex-grow" placeholder="Capture a thought... (Markdown supported)"></textarea>
+                    <textarea id="note-input" class="auto-resize flex-grow" placeholder="Capture a thought... (Markdown & LaTeX supported)"></textarea>
                     <button id="expand-quick-note-btn" class="btn btn-icon btn-secondary ml-2 flex-shrink-0" title="Expand to Full Editor">
                         <i class="fas fa-expand-alt"></i>
                     </button>
                 </div>
                 <div class="quick-note-controls">
-                    <i class="fab fa-markdown text-base text-text-tertiary cursor-default flex-shrink-0" title="Markdown formatting is supported!"></i>
+                    <div class="flex gap-2">
+                        <i class="fab fa-markdown text-base text-text-tertiary cursor-default flex-shrink-0" title="Markdown supported"></i>
+                        <span class="text-xs text-text-tertiary font-mono" title="LaTeX supported">$\LaTeX$</span>
+                    </div>
                     <div class="quick-note-actions-right">
                         <div id="quick-label-dropdown" class="custom-dropdown">
                             <input type="hidden" id="label-select-value" name="label" value="{{ labels[0] if labels else 'idea' }}">
@@ -586,7 +613,7 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
-            <textarea id="fullscreen-note-input" class="auto-resize" placeholder="Let your ideas flow... (Markdown supported)"></textarea>
+            <textarea id="fullscreen-note-input" class="auto-resize" placeholder="Let your ideas flow... (Markdown & LaTeX supported)"></textarea>
             <div class="flex flex-wrap gap-2.5 items-center justify-between mt-auto pt-3 border-t border-border-color">
                 <div class="flex items-center gap-2.5">
                     <div id="fullscreen-label-dropdown" class="custom-dropdown">
@@ -655,11 +682,24 @@
                 pedantic: false,
                 gfm: true,
                 breaks: true,
-                sanitize: true,
+                sanitize: false, // Changed to false to allow LaTeX to pass through potentially
                 smartLists: true,
                 smartypants: false,
                 xhtml: false
             });
+
+            // Function to render math in a specific element
+            function renderMath(element) {
+                renderMathInElement(element, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError : false
+                });
+            }
 
             function autoResizeTextarea(textarea) {
                 if (!textarea) return;
@@ -691,10 +731,10 @@
                         const errorData = await response.json();
                         throw new Error(errorData.error || 'Failed to add new label');
                     }
-                    window.location.reload(); // Could be improved to dynamic update
+                    window.location.reload(); 
                 } catch (error) {
                     console.error('Error adding new label:', error);
-                    console.log(`Could not add label: ${error.message}`);
+                    alert(`Could not add label: ${error.message}`);
                 }
             }
 
@@ -865,7 +905,7 @@
                 const noteData = {
                     content: content,
                     label: newLabel,
-                    filename: editingNote ? editingNote.filename : null,
+                    filename: editingNote ? editingNote.filename : null, // Uses 'filename' to map to ID in backend
                     original_label: editingNote ? editingNote.label : null
                 };
                 try {
@@ -886,7 +926,7 @@
                     editingNote = null;
                 } catch (error) {
                     console.error(`Error ${editingNote ? 'updating' : 'saving'} note:`, error);
-                    console.log(`Could not ${editingNote ? 'update' : 'save'} note: ${error.message}`);
+                    alert(`Could not ${editingNote ? 'update' : 'save'} note: ${error.message}`);
                 }
             }
 
@@ -993,6 +1033,9 @@
                     displayContentPreview = displayContentPreview.substring(0, MAX_CONTENT_PREVIEW_CHARS) + '...';
                 }
                 const isLongContent = note.content.length > MAX_CONTENT_PREVIEW_CHARS || note.content.includes('```') || note.content.split('\n').length > 5;
+                
+                // Note: We use marked.parse here. Be cautious with XSS if this was public.
+                // We add a 'katex-render' class to elements needing math rendering
                 noteEl.innerHTML = `
                     <div class="note-actions">
                         <button class="edit-btn btn btn-icon btn-sm" title="Edit Note"><i class="fas fa-pencil-alt"></i></button>
@@ -1005,11 +1048,17 @@
                         <span class="note-time">${noteDateTime.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })}</span>
                     </div>
                     <div class="prose content-preview text-sm">
-                        <p style="color: var(--text-secondary); font-size: 0.9em; line-height: 1.4;">${marked.parseInline(displayContentPreview.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}</p>
+                        <div class="math-content" style="color: var(--text-secondary); font-size: 0.9em; line-height: 1.4;">${marked.parse(displayContentPreview)}</div>
                     </div>
                     ${isLongContent ? '<div class="mt-1.5 text-right"><span class="show-more text-accent-primary text-xs font-semibold cursor-pointer hover:underline">Show more</span></div>' : ''}
-                    <div class="prose content-full text-sm hidden">${marked.parse(note.content.replace(/</g, "&lt;").replace(/>/g, "&gt;"))}</div>
+                    <div class="prose content-full text-sm hidden">
+                        <div class="math-content">${marked.parse(note.content)}</div>
+                    </div>
                 `;
+                
+                // Render Math in this note
+                noteEl.querySelectorAll('.math-content').forEach(el => renderMath(el));
+
                 const showMoreBtn = noteEl.querySelector('.show-more');
                 if (showMoreBtn) {
                     const contentPreviewEl = noteEl.querySelector('.content-preview');
@@ -1042,7 +1091,7 @@
                             fetchAndRenderNotes(currentFilter, sidebarSearchInput ? sidebarSearchInput.value.trim() : '');
                         } catch (error) {
                             console.error('Error deleting note:', error);
-                            console.log(`Could not delete note: ${error.message}`);
+                            alert(`Could not delete note: ${error.message}`);
                         }
                     }
                 });
