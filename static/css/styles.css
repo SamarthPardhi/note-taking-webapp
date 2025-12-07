@@ -1,0 +1,285 @@
+/* static/css/styles.css */
+
+/* --- Base & Typography --- */
+body {
+    background-color: #f8fafc;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #334155;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #0f172a;
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+/* --- Components --- */
+.card-base {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease-in-out;
+}
+
+.card-base:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e1;
+}
+
+.btn-primary {
+    background-color: #0f172a;
+    color: white;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+.btn-primary:hover { background-color: #1e293b; }
+
+.btn-icon {
+    color: #64748b;
+    background: transparent;
+    border-radius: 0.375rem;
+    padding: 0.5rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.btn-icon:hover, .btn-icon.active {
+    color: #0f172a;
+    background-color: #f1f5f9;
+}
+
+/* --- Auto-Resize Textarea --- */
+.auto-expand-textarea {
+    width: 100%;
+    resize: none;
+    overflow-y: hidden;
+    min-height: 40px;
+    background: transparent;
+    border: none;
+    outline: none;
+    display: block;
+    line-height: 1.6;
+}
+
+/* --- Top Nav --- */
+.top-nav {
+    height: 4rem;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 50; /* Topmost */
+    backdrop-filter: blur(8px);
+}
+
+.search-input {
+    background-color: #f1f5f9;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem 0.5rem 2.5rem;
+    font-size: 0.875rem;
+    width: 100%;
+    transition: all 0.2s;
+}
+.search-input:focus {
+    background-color: #ffffff;
+    border-color: #cbd5e1;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.2);
+}
+
+.nav-link-top {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+    margin-left: 1rem;
+    transition: color 0.2s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.nav-link-top:hover { color: #0f172a; }
+.nav-link-top.active { color: #0f172a; font-weight: 600; }
+.nav-link-top.danger:hover { color: #dc2626; }
+
+/* --- Content Body --- */
+.main-wrapper {
+    width: 100%;
+    min-height: calc(100vh - 4rem);
+    display: flex;
+    flex-direction: column;
+}
+
+.content-body {
+    padding: 2rem;
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* --- Sticky Filter Bar --- */
+.filter-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+    flex-wrap: nowrap; /* Prevent wrapping for sticky row */
+    
+    /* Sticky Magic */
+    position: sticky;
+    top: 4rem; /* Below the 4rem header */
+    z-index: 40;
+    background-color: rgba(248, 250, 252, 0.95); /* Match body bg + opacity */
+    backdrop-filter: blur(8px);
+    padding: 1rem 0; /* Breathing room while sticky */
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+
+/* Add a border when sticking (optional visual cue, handled by scroll usually, simpler here) */
+.filter-bar.is-pinned {
+    border-bottom-color: #e2e8f0;
+}
+
+.label-list {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    max-width: 100%;
+    /* Hide scrollbar visually but keep functionality */
+    scrollbar-width: none; 
+}
+.label-list::-webkit-scrollbar { display: none; }
+
+.label-pill {
+    white-space: nowrap;
+    padding: 0.35rem 0.85rem;
+    border-radius: 9999px;
+    background-color: white;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.label-pill:hover {
+    background-color: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #334155;
+}
+.label-pill.active {
+    background-color: #0f172a;
+    border-color: #0f172a;
+    color: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+/* --- Notes Grid & Lists --- */
+.notes-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+/* List View Layout */
+.notes-container.list-view {
+    grid-template-columns: 1fr;
+}
+
+.note-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s;
+    position: relative;
+    cursor: pointer;
+}
+.note-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border-color: #cbd5e1;
+}
+
+/* Note Card Header */
+.note-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.note-label-tag {
+    background-color: #f1f5f9;
+    color: #475569;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.note-date {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+/* Markdown Styling */
+.prose { font-size: 0.95rem; line-height: 1.6; color: #334155; margin-top: 0.5rem; }
+.prose h1 { font-size: 1.25rem; margin: 1em 0 0.5em; font-weight: 600; color: #0f172a; }
+.prose p { margin-bottom: 0.75em; }
+.prose code { background: #f1f5f9; padding: 0.15em 0.3em; border-radius: 0.25em; font-size: 0.85em; font-family: monospace; }
+
+/* Readability Modifiers */
+.line-clamp-custom {
+    display: -webkit-box;
+    -webkit-line-clamp: 6; /* Default for Grid */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+/* Remove clamping in List View for full reading */
+.notes-container.list-view .line-clamp-custom {
+    display: block;
+    -webkit-line-clamp: unset;
+    overflow: visible;
+}
+
+/* Modal */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+
+/* Mobile */
+@media (max-width: 768px) {
+    .top-nav { padding: 0 1rem; }
+    .content-body { padding: 1rem; }
+    .filter-bar { top: 4rem; padding: 0.75rem 0; overflow-x: auto; }
+    .search-input { max-width: 100%; }
+}

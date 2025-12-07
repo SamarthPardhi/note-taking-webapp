@@ -5,20 +5,22 @@ import os
 import datetime
 from functools import wraps
 import logging
-import uuid 
+import uuid
+import random
+import string
+import re
 
 # --- Configuration and Initialization ---
 app = Flask(__name__)
 
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///zazu_notes.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project_alpha.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your_super_secret_dev_key_change_me')
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'project_alpha_secret_key')
 
 db = SQLAlchemy(app)
 
 # Configuration
-DEVELOPMENT_TOKEN = "abraca"
 ADMIN_EMAIL = "bravesamarth@gmail.com"
 SUPPORT_EMAIL = "bravesamarth@gmail.com"
 
@@ -31,9 +33,11 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128)) 
+    token = db.Column(db.String(6), unique=True, nullable=True)
+    reference = db.Column(db.String(200), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
     notes = db.relationship('Note', backref='author', lazy='dynamic')
+    password_hash = db.Column(db.String(128)) 
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -54,19 +58,22 @@ class Note(db.Model):
 
 # --- Utility Functions ---
 
+def generate_token(length=6):
+    chars = string.ascii_uppercase + string.digits
+    return ''.join(random.choices(chars, k=length))
+
 def token_required(f):
-    """Decorator to enforce the development token access."""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if not session.get('token_authenticated'):
-            return redirect(url_for('token_login_route'))
+        if not session.get('authenticated'):
+            return redirect(url_for('login_route'))
         
-        # In this simple token mode, we assume a single user (ID 1) or Admin
-        current_user_id = session.get('user_id', 1) 
-        user = db.session.get(User, current_user_id)
+        user_id = session.get('user_id')
+        user = db.session.get(User, user_id)
+        
         if not user:
-            create_default_admin()
-            user = db.session.get(User, 1)
+            session.clear()
+            return redirect(url_for('login_route'))
 
         kwargs['current_user'] = user
         return f(*args, **kwargs)
@@ -74,125 +81,160 @@ def token_required(f):
 
 def get_current_labels(user_id):
     labels = db.session.query(Note.label).filter_by(user_id=user_id).distinct().all()
+    # Sort labels alphabetically
     return sorted([label[0] for label in labels if label[0] and label[0].lower() != 'all'])
 
 def create_default_admin():
     if not db.session.get(User, 1):
-        admin = User(name="Admin User", email=ADMIN_EMAIL, is_admin=True)
-        admin.set_password('admin_password_placeholder') 
+        admin_token = "ABRACA" 
+        admin = User(
+            name="Admin User", 
+            email=ADMIN_EMAIL, 
+            is_admin=True,
+            token=admin_token,
+            reference="Creator"
+        )
         db.session.add(admin)
         db.session.commit()
-        logger.info("Default admin user created.")
+        logger.info(f"Default admin user created. Token: {admin_token}")
 
-# --- Note Operations ---
-
-def save_note(content, label, user_id):
-    title = content.split('\n', 1)[0][:70] + '...' if len(content.split('\n', 1)[0]) > 70 else content.split('\n', 1)[0]
-    new_note = Note(content=content, label=label, title=title, user_id=user_id)
-    db.session.add(new_note)
-    db.session.commit()
-    return new_note.timestamp.isoformat(), new_note.id
-
-def delete_note_by_id(note_id, user_id):
-    note = db.session.get(Note, note_id)
-    if note and note.user_id == user_id:
-        db.session.delete(note)
-        db.session.commit()
-        return True
-    return False
-
-def update_note_content(note_id, new_content, new_label, user_id):
-    note = db.session.get(Note, note_id)
-    if note and note.user_id == user_id:
-        note.content = new_content
-        note.label = new_label
-        note.title = new_content.split('\n', 1)[0][:70] + '...' if len(new_content.split('\n', 1)[0]) > 70 else new_content.split('\n', 1)[0]
-        db.session.commit()
-        return True
-    return False
+def is_valid_email(email):
+    pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
+    return re.match(pattern, email) is not None
 
 # --- Routes ---
 
 @app.before_request
 def setup_user_and_db():
-    if not os.path.exists('zazu_notes.db'):
+    if not os.path.exists('project_alpha.db'):
         with app.app_context():
             db.create_all()
             create_default_admin()
 
 @app.route("/", methods=["GET", "POST"])
-@app.route("/token_login", methods=["GET", "POST"])
-def token_login_route():
-    if session.get('token_authenticated'):
+@app.route("/login", methods=["GET", "POST"])
+def login_route():
+    if session.get('authenticated'):
         return redirect(url_for('index'))
     
     if request.method == "POST":
-        token = request.form.get("token")
-        if token == DEVELOPMENT_TOKEN:
-            session['token_authenticated'] = True
-            session['user_id'] = 1 # Default to Admin ID 1
+        input_token = request.form.get("token", "").strip().upper()
+        user = db.session.execute(db.select(User).filter_by(token=input_token)).scalar()
+        
+        if user:
+            session['authenticated'] = True
+            session['user_id'] = user.id
             return redirect(url_for('index'))
         else:
             flash("Invalid access token.", 'error')
-            return redirect(url_for('token_login_route'))
+            return redirect(url_for('login_route'))
 
     return render_template('token_login.html', support_email=SUPPORT_EMAIL)
 
-@app.route("/signup", methods=["GET", "POST"])
+@app.route("/signup", methods=["POST"])
 def signup():
-    if request.method == "POST":
-        data = request.json
-        name = data.get('name')
-        email = data.get('email')
-        
-        if not name or not email:
-            return jsonify({"error": "Name and email are required"}), 400
-        
-        if db.session.execute(db.select(User).filter_by(email=email)).scalar():
-            return jsonify({"error": "User with this email already exists"}), 400
-        
-        new_user = User(name=name, email=email)
-        new_user.set_password(str(uuid.uuid4())) # Dummy password
-        
-        try:
-            db.session.add(new_user)
-            db.session.commit()
-            return jsonify({"success": True, "message": f"Sign up successful. Please wait for the admin ({ADMIN_EMAIL}) to share your access token.", "admin_email": ADMIN_EMAIL}), 201
-        except Exception as e:
-            db.session.rollback()
-            return jsonify({"error": "Failed to save user data."}), 500
-    return jsonify({"error": "Use POST to sign up."}), 405
+    data = request.json
+    name = data.get('name')
+    email = data.get('email')
+    reference = data.get('reference')
+    
+    if not name or not email:
+        return jsonify({"error": "Name and email are required"}), 400
+
+    if not is_valid_email(email):
+        return jsonify({"error": "Invalid email address format"}), 400
+    
+    if db.session.execute(db.select(User).filter_by(email=email)).scalar():
+        return jsonify({"error": "User with this email already exists"}), 400
+    
+    new_token = generate_token()
+    while db.session.execute(db.select(User).filter_by(token=new_token)).scalar():
+        new_token = generate_token()
+
+    new_user = User(name=name, email=email, reference=reference, token=new_token)
+    
+    try:
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify({
+            "success": True, 
+            "message": f"Request submitted. Admin will verify and send your token to {email}."
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": "Failed to save request."}), 500
 
 @app.route("/logout")
 def logout():
     session.clear()
     flash("You have been logged out.", "info")
-    return redirect(url_for('token_login_route'))
+    return redirect(url_for('login_route'))
 
-@app.route("/notes_app")
+# --- Main App ---
+
+@app.route("/app")
 @token_required
 def index(current_user):
     current_labels = get_current_labels(current_user.id)
     return render_template("index.html", labels=current_labels, is_admin=current_user.is_admin, current_user=current_user)
 
+@app.route("/settings")
+@token_required
+def settings(current_user):
+    return render_template("settings.html", current_user=current_user)
+
+@app.route("/update_profile", methods=["POST"])
+@token_required
+def update_profile(current_user):
+    data = request.json
+    new_name = data.get("name")
+    if not new_name:
+        return jsonify({"error": "Name cannot be empty"}), 400
+    try:
+        current_user.name = new_name
+        db.session.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/delete_account", methods=["POST"])
+@token_required
+def delete_account(current_user):
+    if current_user.is_admin and current_user.id == 1:
+        return jsonify({"error": "Root admin cannot be deleted."}), 403
+    try:
+        db.session.query(Note).filter_by(user_id=current_user.id).delete()
+        db.session.delete(current_user)
+        db.session.commit()
+        session.clear()
+        return jsonify({"success": True, "redirect": url_for('login_route')})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/admin")
 @token_required
 def admin_dashboard(current_user):
     if not current_user.is_admin:
-        flash("Access Denied: You are not an admin.", 'error')
+        flash("Access Denied.", 'error')
         return redirect(url_for('index'))
     users = db.session.execute(db.select(User)).scalars().all()
-    return render_template("admin_dashboard.html", users=users, token=DEVELOPMENT_TOKEN)
+    return render_template("admin_dashboard.html", users=users)
 
-# --- API Routes ---
+# --- Note API Routes ---
 
 @app.route("/add_label", methods=["POST"])
 @token_required
 def add_label_route(current_user):
     data = request.json
-    new_label = data.get("label", "").strip().lower()
-    if not new_label or not new_label.isalnum():
-        return jsonify({"error": "Invalid label"}), 400
+    new_label = data.get("label", "").strip()
+    if not new_label:
+        return jsonify({"error": "Label cannot be empty"}), 400
+    
+    # Allow alphanumeric and spaces, hyphens
+    if not re.match(r'^[a-zA-Z0-9\s\-]+$', new_label):
+        return jsonify({"error": "Invalid characters. Only letters, numbers, spaces and hyphens allowed."}), 400
+        
     return jsonify({"success": True, "labels": get_current_labels(current_user.id)}), 201
 
 @app.route("/save", methods=["POST"])
@@ -203,10 +245,12 @@ def save(current_user):
     label = data.get("label")
     if not content or not label: return jsonify({"error": "Missing data"}), 400
     try:
-        timestamp, note_id = save_note(content, label, current_user.id)
-        return jsonify({"timestamp": timestamp, "id": note_id, "label": label, "labels": get_current_labels(current_user.id)}), 201
+        title = content.split('\n', 1)[0][:70] + '...' if len(content.split('\n', 1)[0]) > 70 else content.split('\n', 1)[0]
+        new_note = Note(content=content, label=label, title=title, user_id=current_user.id)
+        db.session.add(new_note)
+        db.session.commit()
+        return jsonify({"timestamp": new_note.timestamp.isoformat(), "id": new_note.id, "label": label, "labels": get_current_labels(current_user.id)}), 201
     except Exception as e:
-        logger.error(f"Error saving note: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route("/notes", methods=["GET"])
@@ -219,11 +263,11 @@ def notes_route(current_user):
     
     filtered_notes = []
     for note in notes:
-        if label_filter and label_filter != 'all' and note.label != label_filter: continue
+        # Case insensitive filter comparison
+        if label_filter and label_filter != 'all' and note.label.lower() != label_filter.lower(): continue
         if search_term:
             low_s = search_term.lower()
             if not (low_s in note.content.lower() or low_s in note.title.lower()): continue
-        
         filtered_notes.append({
             "id": note.id,
             "timestamp": note.timestamp.isoformat(),
@@ -238,7 +282,10 @@ def notes_route(current_user):
 @token_required
 def delete(current_user):
     note_id = request.json.get("filename")
-    if delete_note_by_id(int(note_id), current_user.id):
+    note = db.session.get(Note, int(note_id))
+    if note and note.user_id == current_user.id:
+        db.session.delete(note)
+        db.session.commit()
         return jsonify({"success": True, "labels": get_current_labels(current_user.id)})
     return jsonify({"error": "Failed"}), 404
 
@@ -246,8 +293,12 @@ def delete(current_user):
 @token_required
 def update(current_user):
     data = request.json
-    note_id = int(data.get("filename"))
-    if update_note_content(note_id, data.get("content"), data.get("label"), current_user.id):
+    note = db.session.get(Note, int(data.get("filename")))
+    if note and note.user_id == current_user.id:
+        note.content = data.get("content")
+        note.label = data.get("label")
+        note.title = note.content.split('\n', 1)[0][:70]
+        db.session.commit()
         return jsonify({"success": True})
     return jsonify({"error": "Failed"}), 404
 
