@@ -302,8 +302,32 @@ def update(current_user):
         return jsonify({"success": True})
     return jsonify({"error": "Failed"}), 404
 
+
+@app.route("/regenerate_token", methods=["POST"])
+@token_required
+def regenerate_token(current_user):
+    """Regenerate user's access token"""
+    try:
+        # Generate new unique token
+        new_token = generate_token()
+        while db.session.execute(db.select(User).filter_by(token=new_token)).scalar():
+            new_token = generate_token()
+        
+        # Update user's token
+        current_user.token = new_token
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "token": new_token
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Token regeneration error: {e}")
+        return jsonify({"error": "Failed to regenerate token"}), 500
+
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         create_default_admin()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=8000, debug=True)

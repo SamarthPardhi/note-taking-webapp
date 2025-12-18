@@ -1,316 +1,406 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project Alpha | Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Project Alpha</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body class="bg-slate-50">
+<body>
 
-    <div class="app-container flex-col">
-        
-        <header class="top-nav">
-            <div class="flex items-center gap-4 w-full max-w-lg">
-                <div class="bg-slate-900 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-lg flex-shrink-0 mr-2">
-                    <i class="fas fa-feather-alt text-xs"></i>
-                </div>
-                <div class="relative w-full">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" id="search-input" placeholder="Search..." class="search-input">
-                </div>
+    <!-- Navigation -->
+    <nav class="nav-bar" id="nav">
+        <div class="nav-logo">Project Alpha</div>
+        <div class="nav-actions">
+            <div class="theme-selector">
+                <div class="theme-dot active" data-theme="light"></div>
+                <div class="theme-dot" data-theme="dark"></div>
+                <div class="theme-dot" data-theme="paper"></div>
             </div>
+            <a href="{{ url_for('settings') }}" class="nav-link">Settings</a>
+            {% if is_admin %}
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+        </div>
+    </nav>
 
-            <div class="flex items-center gap-6">
-                {% if is_admin %}
-                <a href="{{ url_for('admin_dashboard') }}" class="nav-link-top text-blue-600">
-                    <i class="fas fa-shield-alt"></i> <span class="hidden sm:inline">Admin</span>
-                </a>
-                {% endif %}
-                <a href="{{ url_for('settings') }}" class="nav-link-top">
-                    <i class="fas fa-cog"></i> <span class="hidden sm:inline">Settings</span>
-                </a>
-                <a href="{{ url_for('logout') }}" class="nav-link-top danger">
-                    <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
-                </a>
-                <div class="h-6 w-px bg-slate-200 mx-1"></div>
-                <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold border border-slate-300 cursor-default">
-                    {{ current_user.name[:2].upper() }}
-                </div>
+    <!-- Input Zone -->
+    <div class="input-zone">
+        <div class="input-card">
+            <textarea 
+                id="input" 
+                class="input-field" 
+                placeholder="Write something..."
+                autofocus></textarea>
+            <div class="input-controls">
+                <input 
+                    id="label-input" 
+                    class="label-input" 
+                    type="text" 
+                    placeholder="Label (optional)"
+                    list="label-suggestions"
+                    value="idea">
+                <datalist id="label-suggestions">
+                    <option value="idea">
+                    {% for label in labels %}
+                    {% if label != 'idea' %}
+                    <option value="{{ label }}">
+                    {% endif %}
+                    {% endfor %}
+                </datalist>
+                <button class="save-btn" id="save-btn">Save</button>
             </div>
-        </header>
-
-        <div class="main-wrapper" style="margin-left: 0;">
-            <main class="content-body">
-                
-                <div class="card-base mb-10 overflow-hidden bg-white shadow-sm">
-                    <div class="px-4 py-3">
-                        <textarea id="note-input" class="auto-expand-textarea text-slate-700 placeholder-slate-400 text-base" placeholder="Capture a thought... (Markdown & LaTeX)"></textarea>
-                    </div>
-                    <div class="bg-slate-50 px-4 py-2 flex justify-between items-center border-t border-slate-100">
-                        <div class="flex items-center gap-3">
-                            <div class="relative">
-                                <select id="quick-label" class="appearance-none bg-white border border-slate-200 text-slate-600 text-xs font-semibold py-1.5 pl-3 pr-8 rounded-md cursor-pointer hover:border-slate-300 focus:outline-none">
-                                    <option value="idea">Idea</option>
-                                    {% for label in labels %}
-                                        {% if label != 'idea' %}<option value="{{ label }}">{{ label|capitalize }}</option>{% endif %}
-                                    {% endfor %}
-                                    <option value="new" class="text-blue-600 font-bold">+ New Label</option>
-                                </select>
-                                <i class="fas fa-chevron-down absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 pointer-events-none"></i>
-                            </div>
-                            <button id="expand-btn" class="text-slate-400 hover:text-slate-600 transition p-1" title="Fullscreen Editor"><i class="fas fa-expand-alt"></i></button>
-                        </div>
-                        <button id="save-btn" class="btn-primary px-4 py-1.5 rounded-md text-xs font-bold shadow-sm">Save</button>
-                    </div>
-                </div>
-
-                <div class="filter-bar">
-                    <div class="label-list" id="label-filter-container">
-                        <div class="label-pill active" data-filter="all">All</div>
-                        {% for label in labels %}
-                        <div class="label-pill" data-filter="{{ label }}">{{ label|capitalize }}</div>
-                        {% endfor %}
-                    </div>
-
-                    <div class="flex bg-slate-100 p-1 rounded-lg flex-shrink-0">
-                        <button class="btn-icon active" id="view-grid" title="Grid View">
-                            <i class="fas fa-th-large text-xs"></i>
-                        </button>
-                        <button class="btn-icon" id="view-list" title="Full Width List">
-                            <i class="fas fa-bars text-xs"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div id="notes-container" class="notes-container"></div>
-
-                <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-center">
-                    <h3 class="text-slate-400 font-medium text-lg">No entries found</h3>
-                </div>
-            </main>
         </div>
     </div>
 
-    <div class="modal-overlay" id="fs-modal">
-        <div class="w-full max-w-4xl h-[85vh] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden m-4">
-            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white z-10">
-                <div class="flex items-center gap-3">
-                    <button id="fs-close" class="text-slate-400 hover:text-slate-700 transition"><i class="fas fa-arrow-left"></i></button>
-                    <span class="font-bold text-slate-700">Editor</span>
+    <!-- Filter Bar -->
+    <div class="filter-bar" id="filter-bar">
+        <div class="filter-chip active" data-filter="all">All</div>
+        {% for label in labels %}
+        <div class="filter-chip" data-filter="{{ label }}">{{ label|capitalize }}</div>
+        {% endfor %}
+    </div>
+
+    <!-- Notes Cards -->
+    <div class="notes-container" id="notes-container"></div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+        <h3>No notes yet</h3>
+        <p>Start writing above</p>
+    </div>
+
+    <!-- Note Viewer -->
+    <div class="note-viewer" id="note-viewer">
+        <div class="viewer-content">
+            <div class="viewer-header">
+                <div class="viewer-meta">
+                    <span class="viewer-label" id="viewer-label"></span>
+                    <span class="viewer-datetime" id="viewer-datetime"></span>
                 </div>
-                <div class="flex items-center gap-3">
-                    <select id="fs-label" class="bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold py-2 px-3 rounded-lg focus:outline-none">
-                        <option value="idea">Idea</option>
-                    </select>
-                    <button id="fs-save" class="btn-primary px-5 py-2 rounded-lg text-sm font-bold shadow-sm">Save Changes</button>
+                <div class="viewer-actions">
+                    <button class="viewer-btn" id="close-viewer">Close</button>
+                    <button class="viewer-btn primary" id="edit-note">Edit</button>
+                    <button class="viewer-btn danger" id="delete-note">Delete</button>
                 </div>
             </div>
-            <div class="flex-1 p-6 md:p-8 overflow-y-auto">
-                <textarea id="fs-input" class="auto-expand-textarea text-lg text-slate-700 leading-relaxed font-sans min-h-full" placeholder="Start writing here..."></textarea>
+            <div class="viewer-body">
+                <div class="note-read" id="note-read"></div>
+                <textarea class="note-edit-area" id="note-edit" style="display: none;"></textarea>
             </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const quickInput = document.getElementById('note-input');
-            const fsInput = document.getElementById('fs-input');
-            const grid = document.getElementById('notes-container');
-            const emptyState = document.getElementById('empty-state');
-            const searchInput = document.getElementById('search-input');
-            const viewGridBtn = document.getElementById('view-grid');
-            const viewListBtn = document.getElementById('view-list');
-            const quickLabelSelect = document.getElementById('quick-label');
-            const fsLabelSelect = document.getElementById('fs-label');
-            const labelFilterContainer = document.getElementById('label-filter-container');
-            
-            let currentFilter = 'all';
+        // ===== STATE =====
+        const html = document.documentElement;
+        const nav = document.getElementById('nav');
+        const input = document.getElementById('input');
+        const labelInput = document.getElementById('label-input');
+        const saveBtn = document.getElementById('save-btn');
+        const filterBar = document.getElementById('filter-bar');
+        const notesContainer = document.getElementById('notes-container');
+        const emptyState = document.getElementById('empty-state');
+        const noteViewer = document.getElementById('note-viewer');
+        const viewerLabel = document.getElementById('viewer-label');
+        const viewerDatetime = document.getElementById('viewer-datetime');
+        const noteRead = document.getElementById('note-read');
+        const noteEdit = document.getElementById('note-edit');
+        const closeViewer = document.getElementById('close-viewer');
+        const editNoteBtn = document.getElementById('edit-note');
+        const deleteNoteBtn = document.getElementById('delete-note');
 
-            function autoResize(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
-            [quickInput, fsInput].forEach(tx => {
-                tx.addEventListener('input', () => autoResize(tx));
-                if(tx.value) autoResize(tx);
+        let currentFilter = 'all';
+        let currentNoteId = null;
+        let isEditing = false;
+        let allLabels = new Set(['idea']);
+
+        // ===== THEME SYSTEM =====
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+
+        document.querySelectorAll('.theme-dot').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === savedTheme);
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                html.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                document.querySelectorAll('.theme-dot').forEach(b => 
+                    b.classList.toggle('active', b === btn));
             });
-
-            function setLayout(mode) {
-                if (mode === 'list') {
-                    grid.classList.add('list-view');
-                    viewListBtn.classList.add('active');
-                    viewGridBtn.classList.remove('active');
-                    localStorage.setItem('alphaLayout', 'list');
-                } else {
-                    grid.classList.remove('list-view');
-                    viewGridBtn.classList.add('active');
-                    viewListBtn.classList.remove('active');
-                    localStorage.setItem('alphaLayout', 'grid');
-                }
-            }
-            if (localStorage.getItem('alphaLayout') === 'list') setLayout('list');
-            viewGridBtn.addEventListener('click', () => setLayout('grid'));
-            viewListBtn.addEventListener('click', () => setLayout('list'));
-
-            function syncDropdowns() { fsLabelSelect.innerHTML = quickLabelSelect.innerHTML; }
-            syncDropdowns();
-
-            async function handleLabelSelection(selectEl) {
-                if (selectEl.value === 'new') {
-                    const newL = prompt("Enter New Label Name:");
-                    if (newL && newL.trim()) {
-                        const cleanLabel = newL.trim();
-                        try {
-                            const res = await fetch('/add_label', {
-                                method: 'POST', headers: {'Content-Type':'application/json'},
-                                body: JSON.stringify({label: cleanLabel})
-                            });
-                            if (res.ok) {
-                                const option = document.createElement('option');
-                                option.value = cleanLabel;
-                                option.textContent = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1);
-                                quickLabelSelect.insertBefore(option.cloneNode(true), quickLabelSelect.lastElementChild);
-                                fsLabelSelect.insertBefore(option, fsLabelSelect.lastElementChild);
-                                selectEl.value = cleanLabel;
-
-                                const pill = document.createElement('div');
-                                pill.className = 'label-pill';
-                                pill.dataset.filter = cleanLabel;
-                                pill.textContent = cleanLabel.charAt(0).toUpperCase() + cleanLabel.slice(1);
-                                pill.addEventListener('click', () => {
-                                    document.querySelectorAll('.label-pill').forEach(p => p.classList.remove('active'));
-                                    pill.classList.add('active');
-                                    currentFilter = cleanLabel;
-                                    fetchNotes(searchInput.value);
-                                });
-                                labelFilterContainer.appendChild(pill);
-                            } else { alert("Failed."); selectEl.value = 'idea'; }
-                        } catch(e) { selectEl.value = 'idea'; }
-                    } else { selectEl.value = 'idea'; }
-                }
-            }
-            quickLabelSelect.addEventListener('change', (e) => handleLabelSelection(e.target));
-            fsLabelSelect.addEventListener('change', (e) => handleLabelSelection(e.target));
-
-            marked.setOptions({ breaks: true, sanitize: false });
-            function renderMath(el) {
-                renderMathInElement(el, { delimiters: [{left: '$$', right: '$$', display: true}, {left: '$', right: '$', display: false}] });
-            }
-
-            async function fetchNotes(search = '') {
-                try {
-                    const res = await fetch(`/notes?label=${currentFilter}&search=${search}`);
-                    const notes = await res.json();
-                    
-                    grid.innerHTML = '';
-                    if(notes.length === 0) {
-                        emptyState.classList.remove('hidden');
-                    } else {
-                        emptyState.classList.add('hidden');
-                        notes.forEach(note => {
-                            const card = document.createElement('div');
-                            card.className = 'note-card group';
-                            const dateObj = new Date(note.timestamp);
-                            const dateStr = dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-
-                            // The .line-clamp-custom class is controlled by the .list-view parent class via CSS
-                            card.innerHTML = `
-                                <div class="note-header">
-                                    <span class="note-label-tag">${note.label}</span>
-                                    <span class="note-date">${dateStr}</span>
-                                </div>
-                                <div class="prose line-clamp-custom">${marked.parse(note.content)}</div>
-                                <div class="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                    <button class="bg-white p-1.5 rounded-md border border-slate-200 text-slate-400 hover:text-blue-600 edit-btn shadow-sm"><i class="fas fa-pen text-xs"></i></button>
-                                    <button class="bg-white p-1.5 rounded-md border border-slate-200 text-slate-400 hover:text-red-600 delete-btn shadow-sm"><i class="fas fa-trash text-xs"></i></button>
-                                </div>
-                            `;
-                            renderMath(card);
-                            
-                            card.querySelector('.edit-btn').addEventListener('click', (e) => { e.stopPropagation(); openEditor(note); });
-                            card.querySelector('.delete-btn').addEventListener('click', async (e) => {
-                                e.stopPropagation();
-                                if(confirm('Delete?')) {
-                                    await fetch('/delete', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({filename: note.id})});
-                                    fetchNotes(searchInput.value);
-                                }
-                            });
-                            card.addEventListener('click', () => openEditor(note));
-                            grid.appendChild(card);
-                        });
-                    }
-                } catch(e) { console.error(e); }
-            }
-
-            const fsModal = document.getElementById('fs-modal');
-            const fsClose = document.getElementById('fs-close');
-            const fsSave = document.getElementById('fs-save');
-            let editingId = null;
-
-            function openEditor(note = null) {
-                fsModal.classList.add('active');
-                if (note) {
-                    fsInput.value = note.content;
-                    editingId = note.id;
-                    let exists = false;
-                    for (let opt of fsLabelSelect.options) { if (opt.value === note.label) exists = true; }
-                    if (!exists) {
-                        const opt = document.createElement('option');
-                        opt.value = note.label;
-                        opt.textContent = note.label.charAt(0).toUpperCase() + note.label.slice(1);
-                        fsLabelSelect.insertBefore(opt, fsLabelSelect.lastElementChild);
-                    }
-                    fsLabelSelect.value = note.label;
-                } else {
-                    fsInput.value = quickInput.value;
-                    editingId = null;
-                }
-                setTimeout(() => autoResize(fsInput), 10);
-            }
-
-            document.getElementById('expand-btn').addEventListener('click', () => openEditor());
-            fsClose.addEventListener('click', () => fsModal.classList.remove('active'));
-            
-            fsSave.addEventListener('click', async () => {
-                const content = fsInput.value;
-                const label = fsLabelSelect.value;
-                const url = editingId ? '/update' : '/save';
-                const body = { content, label, filename: editingId };
-                await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
-                fsModal.classList.remove('active');
-                quickInput.value = '';
-                fetchNotes(searchInput.value);
-            });
-
-            document.getElementById('save-btn').addEventListener('click', async () => {
-                const content = quickInput.value;
-                const label = quickLabelSelect.value;
-                if(!content.trim()) return;
-                await fetch('/save', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({content, label})});
-                quickInput.value = '';
-                autoResize(quickInput);
-                fetchNotes(searchInput.value);
-            });
-
-            searchInput.addEventListener('input', (e) => fetchNotes(e.target.value));
-
-            document.querySelectorAll('.label-pill').forEach(pill => {
-                pill.addEventListener('click', () => {
-                    document.querySelectorAll('.label-pill').forEach(p => p.classList.remove('active'));
-                    pill.classList.add('active');
-                    currentFilter = pill.dataset.filter;
-                    fetchNotes(searchInput.value);
-                });
-            });
-
-            fetchNotes();
         });
+
+        // ===== DISAPPEARING NAV =====
+        let lastScroll = 0;
+        window.addEventListener('scroll', () => {
+            const currentScroll = window.pageYOffset;
+            if (currentScroll > 100 && currentScroll > lastScroll) {
+                nav.classList.add('hidden');
+            } else {
+                nav.classList.remove('hidden');
+            }
+            lastScroll = currentScroll;
+        });
+
+        // ===== SAVE NOTE =====
+        async function saveNote() {
+            const content = input.value.trim();
+            if (!content) return;
+
+            let label = labelInput.value.trim().toLowerCase() || 'idea';
+            
+            saveBtn.textContent = 'Saving...';
+            saveBtn.disabled = true;
+
+            try {
+                if (!allLabels.has(label)) {
+                    await fetch('/add_label', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ label })
+                    });
+                    allLabels.add(label);
+                    
+                    const chip = document.createElement('div');
+                    chip.className = 'filter-chip';
+                    chip.dataset.filter = label;
+                    chip.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+                    chip.addEventListener('click', () => {
+                        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                        chip.classList.add('active');
+                        currentFilter = label;
+                        fetchNotes();
+                    });
+                    filterBar.appendChild(chip);
+
+                    const option = document.createElement('option');
+                    option.value = label;
+                    document.getElementById('label-suggestions').appendChild(option);
+                }
+
+                const res = await fetch('/save', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content, label })
+                });
+
+                if (res.ok) {
+                    input.value = '';
+                    labelInput.value = 'idea';
+                    saveBtn.textContent = 'Saved';
+                    setTimeout(() => {
+                        saveBtn.textContent = 'Save';
+                        saveBtn.disabled = false;
+                    }, 600);
+                    fetchNotes();
+                }
+            } catch (e) {
+                saveBtn.textContent = 'Error';
+                saveBtn.disabled = false;
+            }
+        }
+
+        saveBtn.addEventListener('click', saveNote);
+
+        input.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                saveNote();
+            }
+        });
+
+        // ===== FILTER =====
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentFilter = chip.dataset.filter;
+                fetchNotes();
+            });
+        });
+
+        // ===== MARKDOWN =====
+        marked.setOptions({ breaks: true, sanitize: false });
+
+        function renderMath(el) {
+            if (typeof renderMathInElement !== 'undefined') {
+                renderMathInElement(el, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true },
+                        { left: '$', right: '$', display: false }
+                    ]
+                });
+            }
+        }
+
+        // ===== FETCH NOTES =====
+        async function fetchNotes() {
+            try {
+                const res = await fetch(`/notes?label=${currentFilter}&search=`);
+                const notes = await res.json();
+
+                notes.forEach(note => allLabels.add(note.label));
+
+                notesContainer.innerHTML = '';
+
+                if (notes.length === 0) {
+                    emptyState.style.display = 'block';
+                    notesContainer.style.display = 'none';
+                } else {
+                    emptyState.style.display = 'none';
+                    notesContainer.style.display = 'flex';
+
+                    notes.forEach((note, index) => {
+                        const card = document.createElement('div');
+                        card.className = 'note-card';
+                        card.style.animationDelay = `${index * 0.03}s`;
+
+                        const date = new Date(note.timestamp);
+                        const dateStr = date.toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                        });
+                        const timeStr = date.toLocaleTimeString('en-US', {
+                            hour: 'numeric',
+                            minute: '2-digit',
+                            hour12: true
+                        });
+
+                        const renderedContent = marked.parse(note.content);
+
+                        card.innerHTML = `
+                            <div class="note-header">
+                                <span class="note-label">${note.label}</span>
+                                <div class="note-meta">
+                                    <span class="note-date">${dateStr}</span>
+                                    <span class="note-time">${timeStr}</span>
+                                </div>
+                            </div>
+                            <div class="note-content note-content-clamp">${renderedContent}</div>
+                        `;
+
+                        renderMath(card);
+                        card.addEventListener('click', () => openNote(note));
+                        notesContainer.appendChild(card);
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to fetch notes:', e);
+            }
+        }
+
+        // ===== NOTE VIEWER =====
+        function openNote(note) {
+            currentNoteId = note.id;
+            isEditing = false;
+
+            viewerLabel.textContent = note.label;
+            
+            const date = new Date(note.timestamp);
+            const dateStr = date.toLocaleDateString('en-US', {
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            const timeStr = date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            viewerDatetime.textContent = `${dateStr} at ${timeStr}`;
+
+            noteRead.innerHTML = marked.parse(note.content);
+            renderMath(noteRead);
+            
+            noteEdit.value = note.content;
+
+            noteRead.style.display = 'block';
+            noteEdit.style.display = 'none';
+            editNoteBtn.textContent = 'Edit';
+
+            noteViewer.classList.add('active');
+        }
+
+        closeViewer.addEventListener('click', () => {
+            noteViewer.classList.remove('active');
+        });
+
+        noteViewer.addEventListener('click', (e) => {
+            if (e.target === noteViewer) {
+                noteViewer.classList.remove('active');
+            }
+        });
+
+        editNoteBtn.addEventListener('click', async () => {
+            if (!isEditing) {
+                isEditing = true;
+                noteRead.style.display = 'none';
+                noteEdit.style.display = 'block';
+                editNoteBtn.textContent = 'Save';
+                noteEdit.focus();
+            } else {
+                editNoteBtn.textContent = 'Saving...';
+                editNoteBtn.disabled = true;
+
+                try {
+                    await fetch('/update', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            filename: currentNoteId,
+                            content: noteEdit.value,
+                            label: viewerLabel.textContent
+                        })
+                    });
+
+                    noteRead.innerHTML = marked.parse(noteEdit.value);
+                    renderMath(noteRead);
+                    
+                    noteRead.style.display = 'block';
+                    noteEdit.style.display = 'none';
+                    editNoteBtn.textContent = 'Edit';
+                    editNoteBtn.disabled = false;
+                    isEditing = false;
+
+                    fetchNotes();
+                } catch (e) {
+                    editNoteBtn.textContent = 'Error';
+                    editNoteBtn.disabled = false;
+                }
+            }
+        });
+
+        deleteNoteBtn.addEventListener('click', async () => {
+            if (confirm('Delete this note?')) {
+                try {
+                    await fetch('/delete', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filename: currentNoteId })
+                    });
+
+                    noteViewer.classList.remove('active');
+                    fetchNotes();
+                } catch (e) {
+                    alert('Failed to delete');
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                noteViewer.classList.remove('active');
+            }
+        });
+
+        // ===== INIT =====
+        fetchNotes();
     </script>
 </body>
 </html>

@@ -1,140 +1,287 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Settings | Project Alpha</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <title>Settings — Project Alpha</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .settings-page {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .settings-header {
+            margin-bottom: 48px;
+        }
+
+        .settings-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .settings-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .settings-section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .settings-section h2 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            margin-bottom: 20px;
+        }
+
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            height: 44px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0 14px;
+            font-size: 14px;
+            color: var(--text);
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-input:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .save-btn {
+            width: 100%;
+            height: 44px;
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .save-btn:hover {
+            opacity: 0.9;
+        }
+
+        .danger-zone {
+            background: rgba(255, 59, 48, 0.05);
+            border: 1px solid rgba(255, 59, 48, 0.2);
+        }
+
+        .danger-zone h2 {
+            color: #ff3b30;
+        }
+
+        .delete-btn {
+            width: 100%;
+            height: 44px;
+            background: transparent;
+            color: #ff3b30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .delete-btn:hover {
+            background: rgba(255, 59, 48, 0.1);
+        }
+
+        .back-link {
+            display: inline-block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        .token-display {
+            font-family: 'SF Mono', Monaco, monospace;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: var(--text-tertiary);
+            margin-top: 8px;
+        }
+    </style>
 </head>
-<body class="bg-slate-50 flex flex-col min-h-screen">
-    
-    <header class="top-nav">
-        <div class="flex items-center gap-4">
-            <a href="{{ url_for('index') }}" class="flex items-center gap-3 group">
-                <div class="bg-slate-900 text-white w-8 h-8 rounded-lg flex items-center justify-center shadow-lg group-hover:bg-black transition">
-                    <i class="fas fa-feather-alt text-xs"></i>
-                </div>
-                <span class="font-bold text-slate-900 text-lg tracking-tight group-hover:text-black">Project Alpha</span>
-            </a>
+<body>
+
+    <div class="settings-page">
+        <a href="{{ url_for('index') }}" class="back-link">← Back</a>
+
+        <div class="settings-header">
+            <h1>Settings</h1>
+            <p>Manage your account</p>
         </div>
 
-        <div class="flex items-center gap-6">
-            {% if current_user.is_admin %}
-            <a href="{{ url_for('admin_dashboard') }}" class="nav-link-top text-blue-600">
-                <i class="fas fa-shield-alt"></i> <span class="hidden sm:inline">Admin</span>
-            </a>
-            {% endif %}
-            
-            <div class="nav-link-top active cursor-default">
-                <i class="fas fa-cog"></i> <span class="hidden sm:inline">Settings</span>
+        <div class="settings-section">
+            <h2>Profile</h2>
+            <div class="form-row">
+                <label class="form-label">Display Name</label>
+                <input type="text" id="name" class="form-input" value="{{ current_user.name }}">
             </div>
-            
-            <a href="{{ url_for('logout') }}" class="nav-link-top danger">
-                <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
-            </a>
-
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
-
-            <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-xs font-bold border border-slate-300 cursor-default">
-                {{ current_user.name[:2].upper() }}
+            <div class="form-row">
+                <label class="form-label">Email</label>
+                <input type="text" class="form-input" value="{{ current_user.email }}" disabled>
             </div>
+            <div class="form-row">
+                <label class="form-label">Reference</label>
+                <input type="text" class="form-input" value="{{ current_user.reference or 'N/A' }}" disabled>
+            </div>
+            <button class="save-btn" id="save-profile-btn">Save Changes</button>
         </div>
-    </header>
 
-    <main class="content-body flex-1 flex items-start justify-center pt-10">
-        
-        <div class="w-full max-w-2xl">
-            <a href="{{ url_for('index') }}" class="inline-flex items-center text-slate-400 hover:text-slate-800 mb-6 transition font-medium text-sm gap-2">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-
-            <div class="card-base bg-white p-8 md:p-10">
-                <div class="flex items-center gap-4 mb-8 pb-8 border-b border-slate-100">
-                    <div class="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center text-slate-700 border border-slate-100">
-                        <i class="fas fa-user-cog text-xl"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-2xl font-bold text-slate-900">Account Settings</h1>
-                        <p class="text-sm text-slate-500">Manage your profile and preferences.</p>
-                    </div>
-                </div>
-
-                <div class="space-y-8">
-                    <div class="grid gap-6">
-                        <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-2 tracking-wide">Display Name</label>
-                            <div class="flex gap-3">
-                                <input type="text" id="name" value="{{ current_user.name }}" class="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:bg-white transition">
-                                <button id="update-btn" class="bg-slate-900 text-white px-5 py-2.5 rounded-lg text-sm font-bold hover:bg-black transition shadow-sm">Save Changes</button>
-                            </div>
-                        </div>
-
-                        <div class="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase mb-2 tracking-wide">Email Address</label>
-                                <input type="text" value="{{ current_user.email }}" readonly class="w-full bg-slate-50/50 border border-slate-100 rounded-lg px-4 py-2.5 text-slate-400 cursor-not-allowed">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-bold text-slate-400 uppercase mb-2 tracking-wide">Reference</label>
-                                <input type="text" value="{{ current_user.reference or 'N/A' }}" readonly class="w-full bg-slate-50/50 border border-slate-100 rounded-lg px-4 py-2.5 text-slate-400 cursor-not-allowed">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="pt-8 border-t border-slate-100">
-                        <h3 class="text-xs font-bold text-red-500 uppercase mb-4 tracking-wide">Danger Zone</h3>
-                        <div class="bg-red-50/50 rounded-xl p-5 border border-red-100 flex flex-col md:flex-row items-center justify-between gap-4">
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-700">Delete Account</h4>
-                                <p class="text-xs text-slate-500 mt-1">Permanently remove your account and all data.</p>
-                            </div>
-                            <button id="delete-btn" class="px-4 py-2 bg-white border border-red-200 text-red-600 rounded-lg text-xs font-bold hover:bg-red-600 hover:text-white transition shadow-sm whitespace-nowrap">
-                                Delete Account
-                            </button>
-                        </div>
-                    </div>
-                </div>
+        <div class="settings-section">
+            <h2>Access Token</h2>
+            <div class="form-row">
+                <label class="form-label">Current Token</label>
+                <input type="text" class="form-input token-display" value="{{ current_user.token }}" disabled>
+                <p class="info-text">Your current access token</p>
             </div>
+            <button class="save-btn" id="regenerate-token-btn">Generate New Token</button>
+            <p class="info-text" style="margin-top: 12px;">⚠️ This will invalidate your current token. You'll need to log in again.</p>
         </div>
-    </main>
+
+        <div class="settings-section danger-zone">
+            <h2>Delete Account</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                This will permanently delete your account and all your notes. This action cannot be undone.
+            </p>
+            <button class="delete-btn" id="delete-btn">Delete Account</button>
+        </div>
+    </div>
 
     <script>
-        document.getElementById('update-btn').addEventListener('click', async () => {
-            const name = document.getElementById('name').value;
-            const btn = document.getElementById('update-btn');
-            const originalText = btn.textContent;
-            
-            btn.textContent = 'Saving...';
-            btn.disabled = true;
+        const saveProfileBtn = document.getElementById('save-profile-btn');
+        const nameInput = document.getElementById('name');
+        const deleteBtn = document.getElementById('delete-btn');
+        const regenerateTokenBtn = document.getElementById('regenerate-token-btn');
 
-            const res = await fetch('/update_profile', {
-                method: 'POST', headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name })
-            });
-            
-            btn.disabled = false;
-            if(res.ok) {
-                btn.textContent = 'Saved!';
-                btn.classList.add('bg-green-600');
-                setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.classList.remove('bg-green-600');
-                }, 2000);
-            } else {
-                btn.textContent = 'Error';
-                alert('Failed to update.');
+        saveProfileBtn.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            if (!name) return;
+
+            saveProfileBtn.textContent = 'Saving...';
+            saveProfileBtn.disabled = true;
+
+            try {
+                const res = await fetch('/update_profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+
+                if (res.ok) {
+                    saveProfileBtn.textContent = 'Saved!';
+                    setTimeout(() => {
+                        saveProfileBtn.textContent = 'Save Changes';
+                        saveProfileBtn.disabled = false;
+                    }, 1500);
+                } else {
+                    saveProfileBtn.textContent = 'Error';
+                    saveProfileBtn.disabled = false;
+                }
+            } catch (e) {
+                saveProfileBtn.textContent = 'Error';
+                saveProfileBtn.disabled = false;
             }
         });
 
-        document.getElementById('delete-btn').addEventListener('click', async () => {
-            if(confirm('Are you absolutely sure? This action cannot be undone and will delete all your notes.')) {
-                const res = await fetch('/delete_account', {method: 'POST'});
-                const data = await res.json();
-                if(data.success) window.location.href = data.redirect;
-                else alert(data.error);
+        regenerateTokenBtn.addEventListener('click', async () => {
+            if (confirm('Generate a new token? Your current token will stop working and you\'ll need to log in again.')) {
+                regenerateTokenBtn.textContent = 'Generating...';
+                regenerateTokenBtn.disabled = true;
+
+                try {
+                    const res = await fetch('/regenerate_token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
+                    const data = await res.json();
+
+                    if (res.ok) {
+                        alert(`Your new token is: ${data.token}\n\nPlease save it somewhere safe. You will be logged out now.`);
+                        window.location.href = "{{ url_for('logout') }}";
+                    } else {
+                        alert(data.error || 'Failed to generate token');
+                        regenerateTokenBtn.textContent = 'Generate New Token';
+                        regenerateTokenBtn.disabled = false;
+                    }
+                } catch (e) {
+                    alert('Network error. Please try again.');
+                    regenerateTokenBtn.textContent = 'Generate New Token';
+                    regenerateTokenBtn.disabled = false;
+                }
+            }
+        });
+
+        deleteBtn.addEventListener('click', async () => {
+            if (confirm('Are you absolutely sure? This will delete all your notes forever.')) {
+                if (confirm('Last chance. Really delete everything?')) {
+                    try {
+                        const res = await fetch('/delete_account', { method: 'POST' });
+                        const data = await res.json();
+                        
+                        if (data.success) {
+                            window.location.href = data.redirect;
+                        } else {
+                            alert(data.error || 'Failed to delete account');
+                        }
+                    } catch (e) {
+                        alert('Network error. Please try again.');
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = "{{ url_for('index') }}";
             }
         });
     </script>

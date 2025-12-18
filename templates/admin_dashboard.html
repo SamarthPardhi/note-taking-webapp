@@ -1,62 +1,180 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin | Project Alpha</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <title>Admin — Project Alpha</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .admin-page {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .admin-header {
+            margin-bottom: 48px;
+        }
+
+        .admin-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .admin-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 48px;
+        }
+
+        .stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .user-list {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .user-list-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .user-item {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1fr 1fr;
+            gap: 16px;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        .user-item:last-child {
+            border-bottom: none;
+        }
+
+        .user-item:hover {
+            background: var(--bg);
+        }
+
+        .user-name {
+            font-weight: 500;
+        }
+
+        .user-email {
+            color: var(--text-secondary);
+        }
+
+        .user-token {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            background: var(--bg);
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+
+        .send-link {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .send-link:hover {
+            opacity: 0.7;
+        }
+
+        .back-link {
+            display: inline-block;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        @media (max-width: 768px) {
+            .user-item {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+        }
+    </style>
 </head>
-<body class="bg-slate-50 p-6 md:p-10">
-    <div class="max-w-6xl mx-auto">
-        <div class="flex items-center justify-between mb-8">
-            <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                <i class="fas fa-shield-alt text-slate-900"></i> Admin Dashboard
-            </h1>
-            <a href="{{ url_for('index') }}" class="btn-primary px-4 py-2 rounded-lg text-sm shadow-sm flex items-center gap-2">
-                <i class="fas fa-arrow-left"></i> Back to App
-            </a>
+<body>
+
+    <div class="admin-page">
+        <a href="{{ url_for('index') }}" class="back-link">← Back</a>
+
+        <div class="admin-header">
+            <h1>Admin Control</h1>
+            <p>User management</p>
         </div>
 
-        <div class="card-base overflow-hidden bg-white">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <h2 class="text-lg font-bold text-slate-700">User Management</h2>
-                <span class="text-xs font-bold bg-slate-200 text-slate-600 px-3 py-1 rounded-full">Total Users: {{ users|length }}</span>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">{{ users|length }}</div>
+                <div class="stat-label">Total Users</div>
             </div>
-            <div class="overflow-x-auto">
-                <table class="min-w-full text-left text-sm whitespace-nowrap">
-                    <thead class="bg-white border-b border-slate-100">
-                        <tr>
-                            <th class="px-6 py-4 font-bold text-slate-400 uppercase text-xs tracking-wider">ID</th>
-                            <th class="px-6 py-4 font-bold text-slate-400 uppercase text-xs tracking-wider">Name</th>
-                            <th class="px-6 py-4 font-bold text-slate-400 uppercase text-xs tracking-wider">Email</th>
-                            <th class="px-6 py-4 font-bold text-slate-400 uppercase text-xs tracking-wider">Reference</th>
-                            <th class="px-6 py-4 font-bold text-slate-400 uppercase text-xs tracking-wider">Token</th>
-                            <th class="px-6 py-4 font-bold text-slate-400 uppercase text-xs tracking-wider">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-50">
-                        {% for user in users %}
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="px-6 py-4 font-mono text-slate-400">#{{ user.id }}</td>
-                            <td class="px-6 py-4 font-bold text-slate-700">{{ user.name }}</td>
-                            <td class="px-6 py-4 text-slate-600">{{ user.email }}</td>
-                            <td class="px-6 py-4 text-slate-500 italic">{{ user.reference or '-' }}</td>
-                            <td class="px-6 py-4">
-                                <span class="font-mono bg-slate-100 text-slate-700 px-2 py-1 rounded border border-slate-200 select-all font-bold">{{ user.token }}</span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <a href="mailto:{{ user.email }}?subject=Project Alpha Access&body=Hi {{ user.name }},%0D%0A%0D%0AHere is your access token: {{ user.token }}" class="text-blue-600 hover:text-blue-800 font-bold flex items-center gap-1">
-                                    <i class="fas fa-paper-plane"></i> Send
-                                </a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="stat">
+                <div class="stat-value">{{ users|length }}</div>
+                <div class="stat-label">Active Tokens</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">{{ users|selectattr('is_admin')|list|length }}</div>
+                <div class="stat-label">Admins</div>
             </div>
         </div>
+
+        <div class="user-list">
+            <div class="user-list-header">Users</div>
+            {% for user in users %}
+            <div class="user-item">
+                <div class="user-name">{{ user.name }}</div>
+                <div class="user-email">{{ user.email }}</div>
+                <div class="user-token">{{ user.token }}</div>
+                <a href="mailto:{{ user.email }}?subject=Project Alpha Access&body=Hi {{ user.name }},%0D%0A%0D%0AYour access token: {{ user.token }}" 
+                   class="send-link">Send</a>
+            </div>
+            {% endfor %}
+        </div>
     </div>
+
+    <script>
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                window.location.href = "{{ url_for('index') }}";
+            }
+        });
+    </script>
 </body>
 </html>
