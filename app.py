@@ -14,9 +14,14 @@ import re
 app = Flask(__name__)
 
 # Database Configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///project_alpha.db'
+uri = os.getenv("DATABASE_URL", "sqlite:///project_alpha.db")
+if uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'project_alpha_secret_key')
+
 
 db = SQLAlchemy(app)
 
