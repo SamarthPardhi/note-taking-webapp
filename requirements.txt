@@ -7,3 +7,6 @@ Flask-SQLAlchemy>=3.1.1
 Werkzeug>=3.0.1
 firebase-admin>=6.2.0
 gunicorn
+psycopg2
+psycopg2-binary
+python-dotenv
