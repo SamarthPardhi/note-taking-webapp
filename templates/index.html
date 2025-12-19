@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Alpha</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
@@ -58,6 +59,18 @@
         </div>
     </div>
 
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="search-input-wrapper">
+            <i class="fas fa-search search-icon"></i>
+            <input 
+                type="text" 
+                id="search-input" 
+                class="search-input" 
+                placeholder="Search notes...">
+        </div>
+    </div>
+
     <!-- Filter Bar -->
     <div class="filter-bar" id="filter-bar">
         <div class="filter-chip active" data-filter="all">All</div>
@@ -106,6 +119,7 @@
         const filterBar = document.getElementById('filter-bar');
         const notesContainer = document.getElementById('notes-container');
         const emptyState = document.getElementById('empty-state');
+        const searchInput = document.getElementById('search-input');
         const noteViewer = document.getElementById('note-viewer');
         const viewerLabel = document.getElementById('viewer-label');
         const viewerDatetime = document.getElementById('viewer-datetime');
@@ -119,19 +133,63 @@
         let currentNoteId = null;
         let isEditing = false;
         let allLabels = new Set(['idea']);
+        let recentLabels = JSON.parse(localStorage.getItem('recentLabels') || '["idea"]');
+
+        // Update datalist with recent labels first
+        function updateLabelSuggestions() {
+            const datalist = document.getElementById('label-suggestions');
+            datalist.innerHTML = '';
+            
+            // Add recent labels first
+            recentLabels.forEach(label => {
+                const option = document.createElement('option');
+                option.value = label;
+                datalist.appendChild(option);
+            });
+            
+            // Add other labels
+            allLabels.forEach(label => {
+                if (!recentLabels.includes(label)) {
+                    const option = document.createElement('option');
+                    option.value = label;
+                    datalist.appendChild(option);
+                }
+            });
+        }
+
+        // Track label usage
+        function trackLabelUsage(label) {
+            recentLabels = recentLabels.filter(l => l !== label);
+            recentLabels.unshift(label);
+            recentLabels = recentLabels.slice(0, 5); // Keep only 5 recent
+            localStorage.setItem('recentLabels', JSON.stringify(recentLabels));
+            updateLabelSuggestions();
+        }
 
         // ===== THEME SYSTEM =====
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedTheme = '{{ user_theme if user_theme else "light" }}';
         html.setAttribute('data-theme', savedTheme);
+        localStorage.setItem('theme', savedTheme);
 
         document.querySelectorAll('.theme-dot').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', async () => {
                 const theme = btn.dataset.theme;
                 html.setAttribute('data-theme', theme);
                 localStorage.setItem('theme', theme);
                 document.querySelectorAll('.theme-dot').forEach(b => 
                     b.classList.toggle('active', b === btn));
+                
+                // Save to backend
+                try {
+                    await fetch('/update_theme', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ theme })
+                    });
+                } catch (e) {
+                    console.error('Failed to save theme:', e);
+                }
             });
         });
 
@@ -192,6 +250,7 @@
                 if (res.ok) {
                     input.value = '';
                     labelInput.value = 'idea';
+                    trackLabelUsage(label);
                     saveBtn.textContent = 'Saved';
                     setTimeout(() => {
                         saveBtn.textContent = 'Save';
@@ -240,8 +299,9 @@
 
         // ===== FETCH NOTES =====
         async function fetchNotes() {
+            const searchQuery = searchInput.value.trim();
             try {
-                const res = await fetch(`/notes?label=${currentFilter}&search=`);
+                const res = await fetch(`/notes?label=${currentFilter}&search=${encodeURIComponent(searchQuery)}`);
                 const notes = await res.json();
 
                 notes.forEach(note => allLabels.add(note.label));
@@ -303,17 +363,32 @@
             viewerLabel.textContent = note.label;
             
             const date = new Date(note.timestamp);
-            const dateStr = date.toLocaleDateString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
-            });
-            const timeStr = date.toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            });
-            viewerDatetime.textContent = `${dateStr} at ${timeStr}`;
+            const isMobile = window.innerWidth <= 768;
+            
+            if (isMobile) {
+                const dateStr = date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                });
+                const timeStr = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                viewerDatetime.textContent = `${dateStr} • ${timeStr}`;
+            } else {
+                const dateStr = date.toLocaleDateString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                });
+                const timeStr = date.toLocaleTimeString('en-US', {
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                });
+                viewerDatetime.textContent = `${dateStr} at ${timeStr}`;
+            }
 
             noteRead.innerHTML = marked.parse(note.content);
             renderMath(noteRead);
@@ -399,7 +474,17 @@
             }
         });
 
+        // Search functionality
+        let searchTimeout;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                fetchNotes();
+            }, 300);
+        });
+
         // ===== INIT =====
+        updateLabelSuggestions();
         fetchNotes();
     </script>
 </body>

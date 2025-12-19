@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback — Project Alpha</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .feedback-page {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .feedback-header {
+            margin-bottom: 32px;
+        }
+
+        .feedback-header h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .feedback-header p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        .feedback-form {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .form-input,
+        .form-textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 14px;
+            color: var(--text);
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .form-input {
+            height: 44px;
+        }
+
+        .form-textarea {
+            min-height: 200px;
+            resize: vertical;
+            line-height: 1.6;
+        }
+
+        .form-input:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 44px;
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .submit-btn:hover {
+            opacity: 0.9;
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <div class="nav-logo">Project Alpha</div>
+        <div class="nav-actions">
+            <div class="theme-selector">
+                <div class="theme-dot" data-theme="light"></div>
+                <div class="theme-dot" data-theme="dark"></div>
+                <div class="theme-dot" data-theme="paper"></div>
+            </div>
+            <a href="{{ url_for('index') }}" class="nav-link">Dashboard</a>
+            <a href="{{ url_for('settings') }}" class="nav-link">Settings</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+        </div>
+    </nav>
+
+    <div class="feedback-page">
+        <div class="feedback-header">
+            <h1>Submit Feedback</h1>
+            <p>Help us improve Project Alpha</p>
+        </div>
+
+        <div id="success-message" class="alert info" style="display: none; margin-bottom: 20px;">
+            Thank you! Your feedback has been submitted.
+        </div>
+
+        <div id="error-message" class="alert error" style="display: none; margin-bottom: 20px;"></div>
+
+        <form id="feedback-form" class="feedback-form">
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <select id="feedback-type" class="form-input" style="cursor: pointer;" required>
+                    <option value="">Select type...</option>
+                    <option value="bug">Bug Report</option>
+                    <option value="feature">Feature Request</option>
+                    <option value="improvement">Improvement</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Subject</label>
+                <input 
+                    type="text" 
+                    id="feedback-subject" 
+                    class="form-input" 
+                    placeholder="Brief summary"
+                    required>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Details</label>
+                <textarea 
+                    id="feedback-message" 
+                    class="form-textarea" 
+                    placeholder="Describe your feedback in detail..."
+                    required></textarea>
+            </div>
+
+            <button type="submit" class="submit-btn" id="submit-btn">Submit Feedback</button>
+        </form>
+    </div>
+
+    <script>
+        // Theme persistence
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+
+        document.querySelectorAll('.theme-dot').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === savedTheme);
+            btn.addEventListener('click', () => {
+                const theme = btn.dataset.theme;
+                html.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                document.querySelectorAll('.theme-dot').forEach(b => 
+                    b.classList.toggle('active', b === btn));
+            });
+        });
+
+        // Feedback form
+        const form = document.getElementById('feedback-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const successMsg = document.getElementById('success-message');
+        const errorMsg = document.getElementById('error-message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const type = document.getElementById('feedback-type').value;
+            const subject = document.getElementById('feedback-subject').value;
+            const message = document.getElementById('feedback-message').value;
+
+            submitBtn.textContent = 'Submitting...';
+            submitBtn.disabled = true;
+            successMsg.style.display = 'none';
+            errorMsg.style.display = 'none';
+
+            try {
+                const res = await fetch('/submit_feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type, subject, message })
+                });
+
+                if (res.ok) {
+                    successMsg.style.display = 'block';
+                    form.reset();
+                    submitBtn.textContent = 'Submit Feedback';
+                    submitBtn.disabled = false;
+
+                    setTimeout(() => {
+                        window.location.href = "{{ url_for('settings') }}";
+                    }, 2000);
+                } else {
+                    const data = await res.json();
+                    errorMsg.textContent = data.error || 'Failed to submit feedback';
+                    errorMsg.style.display = 'block';
+                    submitBtn.textContent = 'Submit Feedback';
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                errorMsg.textContent = 'Network error. Please try again.';
+                errorMsg.style.display = 'block';
+                submitBtn.textContent = 'Submit Feedback';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

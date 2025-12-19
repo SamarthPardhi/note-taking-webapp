@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -150,9 +150,24 @@
 </head>
 <body>
 
-    <div class="settings-page">
-        <a href="{{ url_for('index') }}" class="back-link">← Back</a>
+    <!-- Navigation -->
+    <nav class="nav-bar">
+        <div class="nav-logo">Project Alpha</div>
+        <div class="nav-actions">
+            <div class="theme-selector">
+                <div class="theme-dot" data-theme="light"></div>
+                <div class="theme-dot" data-theme="dark"></div>
+                <div class="theme-dot" data-theme="paper"></div>
+            </div>
+            <a href="{{ url_for('index') }}" class="nav-link">Dashboard</a>
+            {% if current_user.is_admin %}
+            <a href="{{ url_for('admin_dashboard') }}" class="nav-link">Admin</a>
+            {% endif %}
+            <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+        </div>
+    </nav>
 
+    <div class="settings-page">
         <div class="settings-header">
             <h1>Settings</h1>
             <p>Manage your account</p>
@@ -186,6 +201,16 @@
             <p class="info-text" style="margin-top: 12px;">⚠️ This will invalidate your current token. You'll need to log in again.</p>
         </div>
 
+        <div class="settings-section">
+            <h2>Feedback</h2>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                Help us improve Project Alpha. Share your thoughts, report bugs, or suggest features.
+            </p>
+            <a href="{{ url_for('feedback') }}" class="save-btn" style="display: block; text-align: center; text-decoration: none; line-height: 44px; padding: 0;">
+                Submit Feedback
+            </a>
+        </div>
+
         <div class="settings-section danger-zone">
             <h2>Delete Account</h2>
             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
@@ -196,6 +221,34 @@
     </div>
 
     <script>
+        // Theme persistence
+        const html = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        html.setAttribute('data-theme', savedTheme);
+
+        document.querySelectorAll('.theme-dot').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.theme === savedTheme);
+            btn.addEventListener('click', async () => {
+                const theme = btn.dataset.theme;
+                html.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                document.querySelectorAll('.theme-dot').forEach(b => 
+                    b.classList.toggle('active', b === btn));
+                
+                // Save to backend
+                try {
+                    await fetch('/update_theme', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ theme })
+                    });
+                } catch (e) {
+                    console.error('Failed to save theme:', e);
+                }
+            });
+        });
+
+        // Profile update
         const saveProfileBtn = document.getElementById('save-profile-btn');
         const nameInput = document.getElementById('name');
         const deleteBtn = document.getElementById('delete-btn');

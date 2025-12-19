@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 # --- Database Models ---
 
+# Add 'theme' column to User model:
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -41,14 +42,29 @@ class User(db.Model):
     token = db.Column(db.String(6), unique=True, nullable=True)
     reference = db.Column(db.String(200), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
+    theme = db.Column(db.String(20), default='light')  # ADD THIS LINE
     notes = db.relationship('Note', backref='author', lazy='dynamic')
-    password_hash = db.Column(db.String(128)) 
+    password_hash = db.Column(db.String(128))
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+# Add new Feedback model:
+class Feedback(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_name = db.Column(db.String(100), nullable=False)
+    type = db.Column(db.String(50), nullable=False)
+    subject = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.datetime.now)
+
+    def __repr__(self):
+        return f'<Feedback {self.id}: {self.subject}>'
+
 
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -106,6 +122,9 @@ def create_default_admin():
 def is_valid_email(email):
     pattern = r'^[\w\.-]+@[\w\.-]+\.\w+$'
     return re.match(pattern, email) is not None
+
+
+
 
 # --- Routes ---
 
@@ -181,7 +200,13 @@ def logout():
 @token_required
 def index(current_user):
     current_labels = get_current_labels(current_user.id)
-    return render_template("index.html", labels=current_labels, is_admin=current_user.is_admin, current_user=current_user)
+    return render_template(
+        "index.html", 
+        labels=current_labels, 
+        is_admin=current_user.is_admin, 
+        current_user=current_user,
+        user_theme=current_user.theme  # ADD THIS LINE
+    )
 
 @app.route("/settings")
 @token_required
@@ -217,14 +242,21 @@ def delete_account(current_user):
         db.session.rollback()
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/admin")
 @token_required
 def admin_dashboard(current_user):
     if not current_user.is_admin:
         flash("Access Denied.", 'error')
         return redirect(url_for('index'))
+    
     users = db.session.execute(db.select(User)).scalars().all()
-    return render_template("admin_dashboard.html", users=users)
+    feedback = db.session.execute(
+        db.select(Feedback).order_by(Feedback.timestamp.desc())
+    ).scalars().all()
+    
+    return render_template("admin_dashboard.html", users=users, feedback=feedback)
+
 
 # --- Note API Routes ---
 
@@ -330,6 +362,97 @@ def regenerate_token(current_user):
         db.session.rollback()
         logger.error(f"Token regeneration error: {e}")
         return jsonify({"error": "Failed to regenerate token"}), 500
+    
+
+
+# ==== NEW ROUTES ====
+
+@app.route("/feedback")
+@token_required
+def feedback(current_user):
+    return render_template("feedback.html", current_user=current_user)
+
+@app.route("/submit_feedback", methods=["POST"])
+@token_required
+def submit_feedback(current_user):
+    data = request.json
+    feedback_type = data.get('type')
+    subject = data.get('subject')
+    message = data.get('message')
+    
+    if not all([feedback_type, subject, message]):
+        return jsonify({"error": "All fields are required"}), 400
+    
+    try:
+        new_feedback = Feedback(
+            user_id=current_user.id,
+            user_name=current_user.name,
+            type=feedback_type,
+            subject=subject,
+            message=message
+        )
+        db.session.add(new_feedback)
+        db.session.commit()
+        return jsonify({"success": True}), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Feedback submission error: {e}")
+        return jsonify({"error": "Failed to submit feedback"}), 500
+
+
+@app.route("/admin/update_token", methods=["POST"])
+@token_required
+def admin_update_token(current_user):
+    if not current_user.is_admin:
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.json
+    user_id = data.get('user_id')
+    
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+    
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    
+    try:
+        # Generate new unique token
+        new_token = generate_token()
+        while db.session.execute(db.select(User).filter_by(token=new_token)).scalar():
+            new_token = generate_token()
+        
+        user.token = new_token
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "token": new_token
+        }), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Admin token update error: {e}")
+        return jsonify({"error": "Failed to update token"}), 500
+
+@app.route("/update_theme", methods=["POST"])
+@token_required
+def update_theme(current_user):
+    data = request.json
+    theme = data.get('theme')
+    
+    if theme not in ['light', 'dark', 'paper']:
+        return jsonify({"error": "Invalid theme"}), 400
+    
+    try:
+        current_user.theme = theme
+        db.session.commit()
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Theme update error: {e}")
+        return jsonify({"error": "Failed to update theme"}), 500
+
+
 
 if __name__ == "__main__":
     with app.app_context():
