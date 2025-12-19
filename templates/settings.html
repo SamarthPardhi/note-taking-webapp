@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings — Project Alpha</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
         .settings-page {
-            max-width: 600px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 80px 24px;
         }
@@ -32,8 +33,9 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
-            margin-bottom: 24px;
+            margin-bottom: 0;
             box-shadow: var(--shadow);
+            height: 100%;
         }
 
         .settings-section h2 {
@@ -123,18 +125,6 @@
             background: rgba(255, 59, 48, 0.1);
         }
 
-        .back-link {
-            display: inline-block;
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 14px;
-            margin-bottom: 24px;
-        }
-
-        .back-link:hover {
-            color: var(--text);
-        }
-
         .token-display {
             font-family: 'SF Mono', Monaco, monospace;
             letter-spacing: 0.1em;
@@ -150,14 +140,15 @@
 </head>
 <body>
 
-    <!-- Navigation -->
     <nav class="nav-bar">
-        <div class="nav-logo">Project Alpha</div>
+        <div class="nav-left">
+            <div class="nav-logo">Project Alpha</div>
+        </div>
         <div class="nav-actions">
             <div class="theme-selector">
+                <div class="theme-dot" data-theme="paper"></div>
                 <div class="theme-dot" data-theme="light"></div>
                 <div class="theme-dot" data-theme="dark"></div>
-                <div class="theme-dot" data-theme="paper"></div>
             </div>
             <a href="{{ url_for('index') }}" class="nav-link">Dashboard</a>
             {% if current_user.is_admin %}
@@ -169,62 +160,86 @@
 
     <div class="settings-page">
         <div class="settings-header">
-            <h1>Settings</h1>
-            <p>Manage your account</p>
+            <h1 class="page-header-title">
+                <a href="{{ url_for('index') }}" class="back-arrow">
+                    <i class="fas fa-arrow-left" style="font-size: 14px;"></i>
+                </a>
+                Settings
+            </h1>
+            <p>Manage your preferences</p>
         </div>
 
-        <div class="settings-section">
-            <h2>Profile</h2>
-            <div class="form-row">
-                <label class="form-label">Display Name</label>
-                <input type="text" id="name" class="form-input" value="{{ current_user.name }}">
-            </div>
-            <div class="form-row">
-                <label class="form-label">Email</label>
-                <input type="text" class="form-input" value="{{ current_user.email }}" disabled>
-            </div>
-            <div class="form-row">
-                <label class="form-label">Reference</label>
-                <input type="text" class="form-input" value="{{ current_user.reference or 'N/A' }}" disabled>
-            </div>
-            <button class="save-btn" id="save-profile-btn">Save Changes</button>
-        </div>
+        <div class="settings-grid">
+            <div class="settings-column">
+                <div class="settings-section">
+                    <h2>Profile</h2>
+                    <div class="form-row">
+                        <label class="form-label">Display Name</label>
+                        <input type="text" id="name" class="form-input" value="{{ current_user.name }}">
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Email</label>
+                        <input type="text" class="form-input" value="{{ current_user.email }}" disabled>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Reference</label>
+                        <input type="text" class="form-input" value="{{ current_user.reference or 'N/A' }}" disabled>
+                    </div>
+                    <button class="save-btn" id="save-profile-btn">Save Changes</button>
+                </div>
 
-        <div class="settings-section">
-            <h2>Access Token</h2>
-            <div class="form-row">
-                <label class="form-label">Current Token</label>
-                <input type="text" class="form-input token-display" value="{{ current_user.token }}" disabled>
-                <p class="info-text">Your current access token</p>
+                <div class="settings-section">
+                    <h2>Access Token</h2>
+                    <div class="form-row">
+                        <label class="form-label">Current Token</label>
+                        <input type="text" class="form-input token-display" value="{{ current_user.token }}" disabled>
+                        <p class="info-text">Your current access token</p>
+                    </div>
+                    <button class="save-btn" id="regenerate-token-btn">Generate New Token</button>
+                    <p class="info-text" style="margin-top: 12px;">⚠️ This will invalidate your current token. You'll need to log in again.</p>
+                </div>
             </div>
-            <button class="save-btn" id="regenerate-token-btn">Generate New Token</button>
-            <p class="info-text" style="margin-top: 12px;">⚠️ This will invalidate your current token. You'll need to log in again.</p>
-        </div>
 
-        <div class="settings-section">
-            <h2>Feedback</h2>
-            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-                Help us improve Project Alpha. Share your thoughts, report bugs, or suggest features.
-            </p>
-            <a href="{{ url_for('feedback') }}" class="save-btn" style="display: block; text-align: center; text-decoration: none; line-height: 44px; padding: 0;">
-                Submit Feedback
-            </a>
-        </div>
+            <div class="settings-column">
+                <div class="settings-section">
+                    <h2>Feedback</h2>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                        Help us improve Project Alpha. Share your thoughts, report bugs, or suggest features.
+                    </p>
+                    <a href="{{ url_for('feedback') }}" class="save-btn" style="display: block; text-align: center; text-decoration: none; line-height: 44px; padding: 0;">
+                        Submit Feedback
+                    </a>
+                </div>
 
-        <div class="settings-section danger-zone">
-            <h2>Delete Account</h2>
-            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
-                This will permanently delete your account and all your notes. This action cannot be undone.
-            </p>
-            <button class="delete-btn" id="delete-btn">Delete Account</button>
+                <div class="settings-section danger-zone">
+                    <h2>Delete Account</h2>
+                    <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;">
+                        This will permanently delete your account and all your notes. This action cannot be undone.
+                    </p>
+                    <button class="delete-btn" id="delete-btn">Delete Account</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         // Theme persistence
         const html = document.documentElement;
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        // Use backend value
+        const savedTheme = '{{ current_user.theme if current_user.theme else "paper" }}';
         html.setAttribute('data-theme', savedTheme);
+        localStorage.setItem('theme', savedTheme);
+
+        // Listen for changes from other tabs
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') {
+                const newTheme = e.newValue;
+                html.setAttribute('data-theme', newTheme);
+                document.querySelectorAll('.theme-dot').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === newTheme);
+                });
+            }
+        });
 
         document.querySelectorAll('.theme-dot').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);

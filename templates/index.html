@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="paper">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Project Alpha</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -13,14 +13,15 @@
 </head>
 <body>
 
-    <!-- Navigation -->
     <nav class="nav-bar" id="nav">
-        <div class="nav-logo">Project Alpha</div>
+        <div class="nav-left">
+            <div class="nav-logo">Project Alpha</div>
+        </div>
         <div class="nav-actions">
             <div class="theme-selector">
-                <div class="theme-dot active" data-theme="light"></div>
-                <div class="theme-dot" data-theme="dark"></div>
                 <div class="theme-dot" data-theme="paper"></div>
+                <div class="theme-dot" data-theme="light"></div>
+                <div class="theme-dot" data-theme="dark"></div>
             </div>
             <a href="{{ url_for('settings') }}" class="nav-link">Settings</a>
             {% if is_admin %}
@@ -30,7 +31,6 @@
         </div>
     </nav>
 
-    <!-- Input Zone -->
     <div class="input-zone">
         <div class="input-card">
             <textarea 
@@ -44,22 +44,14 @@
                     class="label-input" 
                     type="text" 
                     placeholder="Label (optional)"
-                    list="label-suggestions"
-                    value="idea">
+                    list="label-suggestions">
                 <datalist id="label-suggestions">
-                    <option value="idea">
-                    {% for label in labels %}
-                    {% if label != 'idea' %}
-                    <option value="{{ label }}">
-                    {% endif %}
-                    {% endfor %}
-                </datalist>
+                    </datalist>
                 <button class="save-btn" id="save-btn">Save</button>
             </div>
         </div>
     </div>
 
-    <!-- Search Bar -->
     <div class="search-bar">
         <div class="search-input-wrapper">
             <i class="fas fa-search search-icon"></i>
@@ -67,33 +59,27 @@
                 type="text" 
                 id="search-input" 
                 class="search-input" 
-                placeholder="Search notes...">
+                placeholder="Search">
         </div>
     </div>
 
-    <!-- Filter Bar -->
     <div class="filter-bar" id="filter-bar">
         <div class="filter-chip active" data-filter="all">All</div>
-        {% for label in labels %}
-        <div class="filter-chip" data-filter="{{ label }}">{{ label|capitalize }}</div>
-        {% endfor %}
-    </div>
+        </div>
 
-    <!-- Notes Cards -->
     <div class="notes-container" id="notes-container"></div>
 
-    <!-- Empty State -->
     <div class="empty-state" id="empty-state" style="display: none;">
         <h3>No notes yet</h3>
         <p>Start writing above</p>
     </div>
 
-    <!-- Note Viewer -->
     <div class="note-viewer" id="note-viewer">
         <div class="viewer-content">
             <div class="viewer-header">
                 <div class="viewer-meta">
-                    <span class="viewer-label" id="viewer-label"></span>
+                    <span class="viewer-label-display" id="viewer-label"></span>
+                    <input type="text" id="viewer-label-edit" class="viewer-label-edit" style="display: none;">
                     <span class="viewer-datetime" id="viewer-datetime"></span>
                 </div>
                 <div class="viewer-actions">
@@ -122,6 +108,7 @@
         const searchInput = document.getElementById('search-input');
         const noteViewer = document.getElementById('note-viewer');
         const viewerLabel = document.getElementById('viewer-label');
+        const viewerLabelEdit = document.getElementById('viewer-label-edit');
         const viewerDatetime = document.getElementById('viewer-datetime');
         const noteRead = document.getElementById('note-read');
         const noteEdit = document.getElementById('note-edit');
@@ -132,22 +119,81 @@
         let currentFilter = 'all';
         let currentNoteId = null;
         let isEditing = false;
-        let allLabels = new Set(['idea']);
-        let recentLabels = JSON.parse(localStorage.getItem('recentLabels') || '["idea"]');
+        
+        // Load initial labels from backend
+        const initialLabels = {{ labels|tojson }};
+        let allLabels = new Set(initialLabels);
+        if (allLabels.size === 0) allLabels.add('idea');
 
-        // Update datalist with recent labels first
+        let recentLabels = JSON.parse(localStorage.getItem('recentLabels') || '[]');
+        
+        // Recover last used label
+        const lastUsedLabel = localStorage.getItem('lastLabel');
+        if (lastUsedLabel) {
+            labelInput.value = lastUsedLabel;
+        }
+
+        // First Time User Check
+        const isFirstTime = initialLabels.length === 0 || (initialLabels.length === 1 && initialLabels[0] === 'idea');
+        if (isFirstTime && !lastUsedLabel) {
+            labelInput.placeholder = "Create a label (Required)";
+            labelInput.required = true;
+        }
+
+        // ===== AUTO-RESIZE TEXTAREA =====
+        input.addEventListener('input', function() {
+            this.style.height = 'auto'; // Reset height
+            this.style.height = (this.scrollHeight) + 'px'; // Set to scroll height
+        });
+
+        // ===== INITIALIZE FILTER BAR =====
+        function initFilterBar() {
+            // 1. Attach listener to the static "All" chip
+            const allChip = document.querySelector('.filter-chip[data-filter="all"]');
+            allChip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                allChip.classList.add('active');
+                currentFilter = 'all';
+                fetchNotes();
+            });
+
+            // 2. Clear other existing chips (if any reload happens)
+            const existing = Array.from(filterBar.children);
+            existing.forEach(child => {
+                if (child.dataset.filter !== 'all') child.remove();
+            });
+
+            // 3. Add dynamic chips
+            Array.from(allLabels).sort().forEach(label => {
+                if(label === 'idea' && allLabels.size > 1 && !initialLabels.includes('idea')) return; 
+                addFilterChip(label);
+            });
+        }
+
+        function addFilterChip(label) {
+             if (document.querySelector(`.filter-chip[data-filter="${label}"]`)) return;
+
+            const chip = document.createElement('div');
+            chip.className = 'filter-chip';
+            chip.dataset.filter = label;
+            chip.textContent = label.charAt(0).toUpperCase() + label.slice(1);
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                currentFilter = label;
+                fetchNotes();
+            });
+            filterBar.appendChild(chip);
+        }
+
         function updateLabelSuggestions() {
             const datalist = document.getElementById('label-suggestions');
             datalist.innerHTML = '';
-            
-            // Add recent labels first
             recentLabels.forEach(label => {
                 const option = document.createElement('option');
                 option.value = label;
                 datalist.appendChild(option);
             });
-            
-            // Add other labels
             allLabels.forEach(label => {
                 if (!recentLabels.includes(label)) {
                     const option = document.createElement('option');
@@ -157,30 +203,40 @@
             });
         }
 
-        // Track label usage
         function trackLabelUsage(label) {
             recentLabels = recentLabels.filter(l => l !== label);
             recentLabels.unshift(label);
-            recentLabels = recentLabels.slice(0, 5); // Keep only 5 recent
+            recentLabels = recentLabels.slice(0, 5);
             localStorage.setItem('recentLabels', JSON.stringify(recentLabels));
+            localStorage.setItem('lastLabel', label);
             updateLabelSuggestions();
         }
 
-        // ===== THEME SYSTEM =====
-        const savedTheme = '{{ user_theme if user_theme else "light" }}';
+        // ===== THEME SYSTEM (PERSISTENT & SYNCED) =====
+        const savedTheme = '{{ user_theme if user_theme else "paper" }}';
         html.setAttribute('data-theme', savedTheme);
         localStorage.setItem('theme', savedTheme);
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') {
+                const newTheme = e.newValue;
+                html.setAttribute('data-theme', newTheme);
+                document.querySelectorAll('.theme-dot').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === newTheme);
+                });
+            }
+        });
 
         document.querySelectorAll('.theme-dot').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);
             btn.addEventListener('click', async () => {
                 const theme = btn.dataset.theme;
                 html.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
+                localStorage.setItem('theme', theme); 
+                
                 document.querySelectorAll('.theme-dot').forEach(b => 
                     b.classList.toggle('active', b === btn));
                 
-                // Save to backend
                 try {
                     await fetch('/update_theme', {
                         method: 'POST',
@@ -210,8 +266,22 @@
             const content = input.value.trim();
             if (!content) return;
 
-            let label = labelInput.value.trim().toLowerCase() || 'idea';
+            let label = labelInput.value.trim().toLowerCase();
             
+            if (allLabels.size <= 1 && (allLabels.has('idea') || allLabels.size === 0)) {
+                if (!label || label === 'idea') {
+                    labelInput.classList.add('error');
+                    labelInput.placeholder = "Please create a custom label first!";
+                    labelInput.focus();
+                    return;
+                }
+            }
+
+            if (!label) {
+                label = localStorage.getItem('lastLabel') || 'idea';
+            }
+            
+            labelInput.classList.remove('error');
             saveBtn.textContent = 'Saving...';
             saveBtn.disabled = true;
 
@@ -223,19 +293,8 @@
                         body: JSON.stringify({ label })
                     });
                     allLabels.add(label);
+                    addFilterChip(label);
                     
-                    const chip = document.createElement('div');
-                    chip.className = 'filter-chip';
-                    chip.dataset.filter = label;
-                    chip.textContent = label.charAt(0).toUpperCase() + label.slice(1);
-                    chip.addEventListener('click', () => {
-                        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-                        chip.classList.add('active');
-                        currentFilter = label;
-                        fetchNotes();
-                    });
-                    filterBar.appendChild(chip);
-
                     const option = document.createElement('option');
                     option.value = label;
                     document.getElementById('label-suggestions').appendChild(option);
@@ -249,8 +308,12 @@
 
                 if (res.ok) {
                     input.value = '';
-                    labelInput.value = 'idea';
+                    input.style.height = 'auto'; // Reset height after save
+                    input.style.minHeight = '100px';
+
+                    labelInput.value = label; 
                     trackLabelUsage(label);
+                    
                     saveBtn.textContent = 'Saved';
                     setTimeout(() => {
                         saveBtn.textContent = 'Save';
@@ -272,15 +335,9 @@
                 saveNote();
             }
         });
-
-        // ===== FILTER =====
-        document.querySelectorAll('.filter-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-                chip.classList.add('active');
-                currentFilter = chip.dataset.filter;
-                fetchNotes();
-            });
+        
+        labelInput.addEventListener('input', () => {
+             labelInput.classList.remove('error');
         });
 
         // ===== MARKDOWN =====
@@ -304,7 +361,12 @@
                 const res = await fetch(`/notes?label=${currentFilter}&search=${encodeURIComponent(searchQuery)}`);
                 const notes = await res.json();
 
-                notes.forEach(note => allLabels.add(note.label));
+                notes.forEach(note => {
+                    if(!allLabels.has(note.label)) {
+                        allLabels.add(note.label);
+                        addFilterChip(note.label);
+                    }
+                });
 
                 notesContainer.innerHTML = '';
 
@@ -361,34 +423,24 @@
             isEditing = false;
 
             viewerLabel.textContent = note.label;
-            
+            viewerLabel.style.display = 'block';
+            viewerLabelEdit.style.display = 'none';
+            viewerLabelEdit.value = note.label;
+
             const date = new Date(note.timestamp);
             const isMobile = window.innerWidth <= 768;
             
-            if (isMobile) {
-                const dateStr = date.toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric'
-                });
-                const timeStr = date.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
-                viewerDatetime.textContent = `${dateStr} • ${timeStr}`;
-            } else {
-                const dateStr = date.toLocaleDateString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric'
-                });
-                const timeStr = date.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    hour12: true
-                });
-                viewerDatetime.textContent = `${dateStr} at ${timeStr}`;
-            }
+            const dateStr = date.toLocaleDateString('en-US', {
+                month: isMobile ? 'short' : 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            const timeStr = date.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+            viewerDatetime.textContent = `${dateStr} • ${timeStr}`;
 
             noteRead.innerHTML = marked.parse(note.content);
             renderMath(noteRead);
@@ -400,15 +452,19 @@
             editNoteBtn.textContent = 'Edit';
 
             noteViewer.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
 
-        closeViewer.addEventListener('click', () => {
+        function closeViewerFunc() {
             noteViewer.classList.remove('active');
-        });
+            document.body.style.overflow = '';
+        }
+
+        closeViewer.addEventListener('click', closeViewerFunc);
 
         noteViewer.addEventListener('click', (e) => {
             if (e.target === noteViewer) {
-                noteViewer.classList.remove('active');
+                closeViewerFunc();
             }
         });
 
@@ -417,11 +473,15 @@
                 isEditing = true;
                 noteRead.style.display = 'none';
                 noteEdit.style.display = 'block';
+                viewerLabel.style.display = 'none';
+                viewerLabelEdit.style.display = 'block';
                 editNoteBtn.textContent = 'Save';
                 noteEdit.focus();
             } else {
                 editNoteBtn.textContent = 'Saving...';
                 editNoteBtn.disabled = true;
+
+                const newLabel = viewerLabelEdit.value.trim() || viewerLabel.textContent;
 
                 try {
                     await fetch('/update', {
@@ -430,18 +490,28 @@
                         body: JSON.stringify({
                             filename: currentNoteId,
                             content: noteEdit.value,
-                            label: viewerLabel.textContent
+                            label: newLabel
                         })
                     });
 
+                    viewerLabel.textContent = newLabel;
                     noteRead.innerHTML = marked.parse(noteEdit.value);
                     renderMath(noteRead);
                     
                     noteRead.style.display = 'block';
                     noteEdit.style.display = 'none';
+                    viewerLabel.style.display = 'block';
+                    viewerLabelEdit.style.display = 'none';
+                    
                     editNoteBtn.textContent = 'Edit';
                     editNoteBtn.disabled = false;
                     isEditing = false;
+                    
+                    if(!allLabels.has(newLabel)) {
+                        allLabels.add(newLabel);
+                        addFilterChip(newLabel);
+                    }
+                    trackLabelUsage(newLabel);
 
                     fetchNotes();
                 } catch (e) {
@@ -459,8 +529,7 @@
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ filename: currentNoteId })
                     });
-
-                    noteViewer.classList.remove('active');
+                    closeViewerFunc();
                     fetchNotes();
                 } catch (e) {
                     alert('Failed to delete');
@@ -470,11 +539,10 @@
 
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                noteViewer.classList.remove('active');
+                closeViewerFunc();
             }
         });
 
-        // Search functionality
         let searchTimeout;
         searchInput.addEventListener('input', () => {
             clearTimeout(searchTimeout);
@@ -483,7 +551,7 @@
             }, 300);
         });
 
-        // ===== INIT =====
+        initFilterBar();
         updateLabelSuggestions();
         fetchNotes();
     </script>

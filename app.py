@@ -42,7 +42,7 @@ class User(db.Model):
     token = db.Column(db.String(6), unique=True, nullable=True)
     reference = db.Column(db.String(200), nullable=True)
     is_admin = db.Column(db.Boolean, default=False)
-    theme = db.Column(db.String(20), default='light')  # ADD THIS LINE
+    theme = db.Column(db.String(20), default='paper')  # Default to 'paper' theme
     notes = db.relationship('Note', backref='author', lazy='dynamic')
     password_hash = db.Column(db.String(128))
 
@@ -113,7 +113,8 @@ def create_default_admin():
             email=ADMIN_EMAIL, 
             is_admin=True,
             token=admin_token,
-            reference="Creator"
+            reference="Creator",
+            theme='paper'
         )
         db.session.add(admin)
         db.session.commit()
@@ -191,7 +192,6 @@ def signup():
 @app.route("/logout")
 def logout():
     session.clear()
-    flash("You have been logged out.", "info")
     return redirect(url_for('login_route'))
 
 # --- Main App ---
@@ -200,12 +200,14 @@ def logout():
 @token_required
 def index(current_user):
     current_labels = get_current_labels(current_user.id)
+    # Default to paper if theme is None
+    theme = current_user.theme if current_user.theme else 'paper'
     return render_template(
         "index.html", 
         labels=current_labels, 
         is_admin=current_user.is_admin, 
         current_user=current_user,
-        user_theme=current_user.theme  # ADD THIS LINE
+        user_theme=theme
     )
 
 @app.route("/settings")

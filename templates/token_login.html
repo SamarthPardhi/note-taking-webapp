@@ -1,146 +1,115 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="paper">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Project Alpha</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body>
 
-    <div class="login-page">
-        <!-- Left Side - Branding -->
-        <div class="login-left">
-            <div class="login-logo">α</div>
-            <h1 class="login-title">Project Alpha</h1>
-            <p class="login-description">
-                A place for your thoughts. Capture ideas instantly, find them effortlessly, and never lose what matters.
+    <div class="cloud-container">
+        
+        <div class="cloud-card">
+            <div class="cloud-logo-wrapper">
+                <div class="cloud-logo-dots"></div>
+                <div class="cloud-logo">
+                    <i class="fas fa-pen-nib"></i>
+                </div>
+            </div>
+
+            <h1 class="cloud-title">Project Alpha</h1>
+            
+            <p class="cloud-description">
+                Stop trusting your memory, instead use me to conveniently save your ideas, plans, learnings, funny things, and whatever else you want to (Markdown and LaTeX supported)!
             </p>
-            <div class="login-footer">Private Development Build</div>
-        </div>
 
-        <!-- Right Side - Form -->
-        <div class="login-right">
-            <div class="login-form-container">
-                <h2 class="login-form-title">Welcome Back</h2>
-                <p class="login-form-subtitle">Enter your access token to continue</p>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="font-size: 13px; color: #ff3b30; margin-bottom: 16px;">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        {% for category, message in messages %}
-                            <div class="alert {{ category }}">{{ message }}</div>
-                        {% endfor %}
-                    {% endif %}
-                {% endwith %}
+            <form method="POST" action="{{ url_for('login_route') }}" style="width: 100%; position: relative;">
+                <input 
+                    name="token" 
+                    type="password" 
+                    maxlength="6" 
+                    class="cloud-input" 
+                    placeholder="Access Token" 
+                    autocomplete="off" 
+                    required 
+                    autofocus />
+                
+                <button type="submit" style="position: absolute; right: 12px; top: 12px; background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 4px;">
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
 
-                <form method="POST" action="{{ url_for('login_route') }}">
-                    <input 
-                        type="password" 
-                        name="token" 
-                        class="login-input" 
-                        placeholder="TOKEN"
-                        required
-                        autocomplete="off"
-                        maxlength="6"
-                        autofocus>
-                    <button type="submit" class="login-btn">Enter</button>
-                </form>
+            <div class="cloud-actions">
+                <button id="request-access" class="cloud-link">Request Access?</button>
+            </div>
 
-                <div class="login-link">
-                    <button id="request-btn">Request Access</button>
+            <div class="cloud-card-footer">
+                <div>bravesamarth@gmail.com</div>
+                <div>Private Development Build v0.9</div>
+                <div style="margin-top: 12px; font-size: 12px; opacity: 0.7; font-weight: 400;">
+                    Samarth's passion project made with AI. 
+                    <a href="https://github.com/samarthpardhi/note-taking-webapp" target="_blank" style="color: inherit; text-decoration: underline;">Contribute</a>
                 </div>
             </div>
         </div>
+
     </div>
 
-    <!-- Request Modal -->
-    <div class="modal-overlay" id="request-modal">
+    <div class="modal-overlay" id="request-modal" aria-hidden="true">
         <div class="modal-content">
-            <h2>Request Access</h2>
-            <p>Submit for verification</p>
-
-            <div id="request-message" class="alert" style="display: none;"></div>
-
-            <form id="request-form">
-                <div class="form-group">
-                    <label class="form-label">Name</label>
-                    <input type="text" id="name" class="form-input" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Email</label>
-                    <input type="email" id="email" class="form-input" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">Reference</label>
-                    <input type="text" id="reference" class="form-input" placeholder="How did you find us?">
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" id="cancel-btn" class="btn btn-secondary">Cancel</button>
+            <h3>Request Access</h3>
+            <p style="color:var(--text-secondary); margin-bottom:12px;">We'll verify and send a short token to your email.</p>
+            <form id="request-form" style="display:flex;flex-direction:column;gap:10px;">
+                <input id="r-name" placeholder="Name" class="form-input" required />
+                <input id="r-email" type="email" placeholder="Email" class="form-input" required />
+                <div style="display:flex;gap:8px;margin-top:4px;">
+                    <button type="button" id="r-cancel" class="btn btn-secondary">Cancel</button>
                     <button type="submit" class="btn btn-primary">Submit</button>
                 </div>
             </form>
+            <div id="r-msg" style="margin-top:12px; font-size:13px;"></div>
         </div>
     </div>
 
     <script>
-        const requestBtn = document.getElementById('request-btn');
-        const requestModal = document.getElementById('request-modal');
-        const cancelBtn = document.getElementById('cancel-btn');
-        const requestForm = document.getElementById('request-form');
-        const requestMessage = document.getElementById('request-message');
+        const reqBtn = document.getElementById('request-access');
+        const modal = document.getElementById('request-modal');
+        const rCancel = document.getElementById('r-cancel');
+        const rForm = document.getElementById('request-form');
+        const rMsg = document.getElementById('r-msg');
 
-        requestBtn.addEventListener('click', () => {
-            requestModal.classList.add('active');
-            requestMessage.style.display = 'none';
-        });
+        if(reqBtn){
+            reqBtn.addEventListener('click', () => { modal.classList.add('active'); modal.style.display='flex'; modal.setAttribute('aria-hidden','false'); });
+        }
+        
+        if(rCancel){
+            rCancel.addEventListener('click', () => { modal.classList.remove('active'); modal.style.display='none'; modal.setAttribute('aria-hidden','true'); });
+        }
+        
+        modal.addEventListener('click', (e)=>{ if (e.target === modal) { modal.classList.remove('active'); modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }});
 
-        cancelBtn.addEventListener('click', () => {
-            requestModal.classList.remove('active');
-        });
-
-        requestModal.addEventListener('click', (e) => {
-            if (e.target === requestModal) {
-                requestModal.classList.remove('active');
-            }
-        });
-
-        requestForm.addEventListener('submit', async (e) => {
+        rForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const reference = document.getElementById('reference').value;
-
+            const name = document.getElementById('r-name').value.trim();
+            const email = document.getElementById('r-email').value.trim();
+            rMsg.textContent = 'Sending...';
             try {
-                const res = await fetch('/signup', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, reference })
-                });
-
+                const res = await fetch('/signup', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, email }) });
                 const data = await res.json();
-                
-                requestMessage.style.display = 'block';
-                requestMessage.className = res.ok ? 'alert info' : 'alert error';
-                requestMessage.textContent = data.message || data.error;
-
-                if (res.ok) {
-                    requestForm.reset();
-                }
-            } catch (e) {
-                requestMessage.style.display = 'block';
-                requestMessage.className = 'alert error';
-                requestMessage.textContent = 'Network error';
-            }
-        });
-
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                requestModal.classList.remove('active');
-            }
+                rMsg.textContent = data.message || 'Request sent';
+                rMsg.style.color = res.ok ? 'var(--text)' : '#ff3b30';
+                if (res.ok) { rForm.reset(); setTimeout(()=>{ modal.classList.remove('active'); modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }, 1500); }
+            } catch (err) { rMsg.textContent = 'Network error'; rMsg.style.color = '#ff3b30'; }
         });
     </script>
 </body>

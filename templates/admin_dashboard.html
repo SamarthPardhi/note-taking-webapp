@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin — Project Alpha</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
         .admin-page {
@@ -217,14 +218,15 @@
 </head>
 <body>
 
-    <!-- Navigation -->
     <nav class="nav-bar">
-        <div class="nav-logo">Project Alpha</div>
+        <div class="nav-left">
+            <div class="nav-logo">Project Alpha</div>
+        </div>
         <div class="nav-actions">
             <div class="theme-selector">
+                <div class="theme-dot" data-theme="paper"></div>
                 <div class="theme-dot" data-theme="light"></div>
                 <div class="theme-dot" data-theme="dark"></div>
-                <div class="theme-dot" data-theme="paper"></div>
             </div>
             <a href="{{ url_for('index') }}" class="nav-link">Dashboard</a>
             <a href="{{ url_for('settings') }}" class="nav-link">Settings</a>
@@ -234,7 +236,12 @@
 
     <div class="admin-page">
         <div class="admin-header">
-            <h1>Admin Control</h1>
+            <h1 class="page-header-title">
+                <a href="{{ url_for('index') }}" class="back-arrow">
+                    <i class="fas fa-arrow-left" style="font-size: 14px;"></i>
+                </a>
+                System Overview
+            </h1>
             <p>User and feedback management</p>
         </div>
 
@@ -258,7 +265,6 @@
             <button class="admin-tab" data-tab="feedback">Feedback</button>
         </div>
 
-        <!-- Users Tab -->
         <div class="tab-content active" id="users-tab">
             <div class="data-table">
                 <div class="table-header">User Management</div>
@@ -267,7 +273,7 @@
                     <div class="user-name">{{ user.name }}</div>
                     <div class="user-email">{{ user.email }}</div>
                     <div>
-                        <span class="theme-badge">{{ user.theme if user.theme else 'light' }}</span>
+                        <span class="theme-badge">{{ user.theme if user.theme else 'paper' }}</span>
                     </div>
                     <div class="token-display">{{ user.token }}</div>
                     <div style="display: flex; gap: 8px;">
@@ -282,7 +288,6 @@
             </div>
         </div>
 
-        <!-- Feedback Tab -->
         <div class="tab-content" id="feedback-tab">
             {% if feedback and feedback|length > 0 %}
                 {% for item in feedback %}
@@ -309,8 +314,19 @@
     <script>
         // Theme persistence
         const html = document.documentElement;
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedTheme = localStorage.getItem('theme') || 'paper'; // Default paper
         html.setAttribute('data-theme', savedTheme);
+
+        // Listen for changes from other tabs
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') {
+                const newTheme = e.newValue;
+                html.setAttribute('data-theme', newTheme);
+                document.querySelectorAll('.theme-dot').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === newTheme);
+                });
+            }
+        });
 
         document.querySelectorAll('.theme-dot').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Feedback — Project Alpha</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <style>
         .feedback-page {
@@ -16,15 +17,23 @@
             margin-bottom: 32px;
         }
 
+        .feedback-header-top {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
         .feedback-header h1 {
             font-size: 24px;
             font-weight: 600;
-            margin-bottom: 8px;
+            margin: 0;
         }
 
         .feedback-header p {
             font-size: 14px;
             color: var(--text-secondary);
+            margin-left: 44px;
         }
 
         .feedback-form {
@@ -34,7 +43,8 @@
             padding: 24px;
             box-shadow: var(--shadow);
         }
-
+        
+        /* ... existing styles ... */
         .form-group {
             margin-bottom: 20px;
         }
@@ -101,14 +111,13 @@
 </head>
 <body>
 
-    <!-- Navigation -->
     <nav class="nav-bar">
         <div class="nav-logo">Project Alpha</div>
         <div class="nav-actions">
             <div class="theme-selector">
+                <div class="theme-dot" data-theme="paper"></div>
                 <div class="theme-dot" data-theme="light"></div>
                 <div class="theme-dot" data-theme="dark"></div>
-                <div class="theme-dot" data-theme="paper"></div>
             </div>
             <a href="{{ url_for('index') }}" class="nav-link">Dashboard</a>
             <a href="{{ url_for('settings') }}" class="nav-link">Settings</a>
@@ -121,7 +130,12 @@
 
     <div class="feedback-page">
         <div class="feedback-header">
-            <h1>Submit Feedback</h1>
+            <div class="feedback-header-top">
+                <a href="{{ url_for('settings') }}" class="header-back-link">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h1>Submit Feedback</h1>
+            </div>
             <p>Help us improve Project Alpha</p>
         </div>
 
@@ -169,8 +183,18 @@
     <script>
         // Theme persistence
         const html = document.documentElement;
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedTheme = localStorage.getItem('theme') || 'paper';
         html.setAttribute('data-theme', savedTheme);
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'theme') {
+                const newTheme = e.newValue;
+                html.setAttribute('data-theme', newTheme);
+                document.querySelectorAll('.theme-dot').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.theme === newTheme);
+                });
+            }
+        });
 
         document.querySelectorAll('.theme-dot').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.theme === savedTheme);
